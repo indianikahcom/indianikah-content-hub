@@ -86,3 +86,9 @@ Track:
 - AI requests
 - Publishing history
 - Errors
+
+---
+
+## 10. Content Editor
+
+A rich editor for creating and managing manual posts with media attachments, previews, scheduling, and publishing controls.
