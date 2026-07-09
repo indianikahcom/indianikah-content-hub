@@ -1,12 +1,10 @@
 const express = require("express");
+const healthRoutes = require("./routes/healthRoutes");
 
 const app = express();
 
-app.get("/health", (req, res) => {
-    res.json({
-        status: "OK",
-        version: "0.0.1"
-    });
-});
+app.use(express.json());
+
+app.use("/", healthRoutes);
 
 module.exports = app;
