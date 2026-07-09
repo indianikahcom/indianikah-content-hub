@@ -84,3 +84,10 @@ The system shall publish approved posts to supported social media platforms.
 ## FR-010 Analytics
 
 The system shall record publishing history and engagement statistics.
+
+---
+
+
+## FR-011 – Manual Content Creation
+
+The system shall allow administrators to create, edit, preview, save as draft, schedule, and publish manual posts to one or more supported social media platforms
