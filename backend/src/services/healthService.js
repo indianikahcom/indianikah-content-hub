@@ -1,7 +1,11 @@
+const config = require("../config/appConfig");
+
 function getHealthStatus() {
     return {
         status: "OK",
-        version: "0.0.1"
+        version: config.version,
+        application: config.appName,
+        environment: config.environment
     };
 }
 
