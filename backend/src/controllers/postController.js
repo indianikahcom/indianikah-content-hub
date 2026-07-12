@@ -4,9 +4,9 @@ async function createPost(request, response, next) {
     try {
         const post = await postService.createPost(request.body);
 
-        response.status(201).json(post);
+        return response.status(201).json(post);
     } catch (error) {
-        next(error);
+        return next(error);
     }
 }
 
@@ -14,13 +14,36 @@ async function getAllPosts(request, response, next) {
     try {
         const posts = await postService.getAllPosts();
 
-        response.json(posts);
+        return response.json(posts);
     } catch (error) {
-        next(error);
+        return next(error);
+    }
+}
+
+async function updatePostStatus(request, response, next) {
+    try {
+        const postId = Number(request.params.id);
+
+        if (!Number.isInteger(postId) || postId <= 0) {
+            return response.status(400).json({
+                status: "ERROR",
+                message: "Invalid post ID"
+            });
+        }
+
+        const post = await postService.updatePostStatus(
+            postId,
+            request.body
+        );
+
+        return response.json(post);
+    } catch (error) {
+        return next(error);
     }
 }
 
 module.exports = {
     createPost,
-    getAllPosts
+    getAllPosts,
+    updatePostStatus
 };

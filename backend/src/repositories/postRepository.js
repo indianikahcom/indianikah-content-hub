@@ -14,7 +14,28 @@ async function getAllPosts() {
     });
 }
 
+async function getPostById(postId) {
+    return prisma.post.findUnique({
+        where: {
+            id: postId
+        }
+    });
+}
+
+async function updatePostStatus(postId, status) {
+    return prisma.post.update({
+        where: {
+            id: postId
+        },
+        data: {
+            status
+        }
+    });
+}
+
 module.exports = {
     createPost,
-    getAllPosts
+    getAllPosts,
+    getPostById,
+    updatePostStatus
 };
