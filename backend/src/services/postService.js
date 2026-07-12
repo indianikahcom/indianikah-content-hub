@@ -1,14 +1,27 @@
 const postRepository = require("../repositories/postRepository");
+
 const {
     createPostSchema,
-    updatePostStatusSchema
+    updatePostSchema,
+    updatePostStatusSchema,
+    postStatusFilterSchema
 } = require("../validators/postValidator");
+
 const AppError = require("../errors/AppError");
 
 const allowedStatusTransitions = {
-    DRAFT: ["PENDING_APPROVAL"],
-    PENDING_APPROVAL: ["DRAFT", "APPROVED"],
-    APPROVED: ["DRAFT"]
+    DRAFT: [
+        "PENDING_APPROVAL"
+    ],
+
+    PENDING_APPROVAL: [
+        "DRAFT",
+        "APPROVED"
+    ],
+
+    APPROVED: [
+        "DRAFT"
+    ]
 };
 
 async function createPost(postData) {
@@ -17,20 +30,57 @@ async function createPost(postData) {
     return postRepository.createPost(validatedPost);
 }
 
-async function getAllPosts() {
-    return postRepository.getAllPosts();
+async function getAllPosts(status) {
+    let validatedStatus;
+
+    if (status) {
+        validatedStatus = postStatusFilterSchema.parse(status);
+    }
+
+    return postRepository.getAllPosts(validatedStatus);
+}
+
+async function getPostById(postId) {
+    const post = await postRepository.getPostById(postId);
+
+    if (!post) {
+        throw new AppError(
+            "Post not found",
+            404
+        );
+    }
+
+    return post;
+}
+
+async function updatePost(postId, postData) {
+    const validatedPost = updatePostSchema.parse(postData);
+
+    const post = await getPostById(postId);
+
+    if (post.status === "APPROVED") {
+        throw new AppError(
+            "Approved post cannot be edited. Move it back to DRAFT first.",
+            409,
+            {
+                currentStatus: post.status
+            }
+        );
+    }
+
+    return postRepository.updatePost(
+        postId,
+        validatedPost
+    );
 }
 
 async function updatePostStatus(postId, requestData) {
     const validatedData = updatePostStatusSchema.parse(requestData);
 
-    const post = await postRepository.getPostById(postId);
+    const post = await getPostById(postId);
 
-    if (!post) {
-        throw new AppError("Post not found", 404);
-    }
-
-    const allowedStatuses = allowedStatusTransitions[post.status] || [];
+    const allowedStatuses =
+        allowedStatusTransitions[post.status] || [];
 
     if (!allowedStatuses.includes(validatedData.status)) {
         throw new AppError(
@@ -53,5 +103,7 @@ async function updatePostStatus(postId, requestData) {
 module.exports = {
     createPost,
     getAllPosts,
+    getPostById,
+    updatePost,
     updatePostStatus
 };

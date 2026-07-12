@@ -6,8 +6,14 @@ async function createPost(postData) {
     });
 }
 
-async function getAllPosts() {
+async function getAllPosts(status) {
     return prisma.post.findMany({
+        where: status
+            ? {
+                status
+            }
+            : undefined,
+
         orderBy: {
             createdAt: "desc"
         }
@@ -22,11 +28,22 @@ async function getPostById(postId) {
     });
 }
 
+async function updatePost(postId, postData) {
+    return prisma.post.update({
+        where: {
+            id: postId
+        },
+
+        data: postData
+    });
+}
+
 async function updatePostStatus(postId, status) {
     return prisma.post.update({
         where: {
             id: postId
         },
+
         data: {
             status
         }
@@ -37,5 +54,6 @@ module.exports = {
     createPost,
     getAllPosts,
     getPostById,
+    updatePost,
     updatePostStatus
 };
