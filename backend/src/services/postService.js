@@ -1,7 +1,10 @@
 const postRepository = require("../repositories/postRepository");
+const { createPostSchema } = require("../validators/postValidator");
 
 async function createPost(postData) {
-    return postRepository.createPost(postData);
+    const validatedPost = createPostSchema.parse(postData);
+
+    return postRepository.createPost(validatedPost);
 }
 
 async function getAllPosts() {
