@@ -7,10 +7,231 @@ datasource db {
 }
 
 model Post {
+  id               Int                @id @default(autoincrement())
+  title            String
+  content          String
+  status           String             @default("DRAFT")
+  sourceId         Int?               @unique
+  createdAt        DateTime           @default(now())
+  updatedAt        DateTime           @updatedAt
+  ContentQueueItem ContentQueueItem[]
+  source           ContentSource?     @relation(fields: [sourceId], references: [id])
+  PostVariant      PostVariant[]
+  Publication      Publication[]
+  PublishCampaign  PublishCampaign[]
+
+  @@index([status])
+}
+
+model ContentSource {
+  id         Int      @id @default(autoincrement())
+  type       String
+  title      String?
+  sourceUrl  String?
+  externalId String?  @unique
+  rawContent String?
+  metadata   String?
+  status     String   @default("NEW")
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  post       Post?
+
+  @@index([type])
+  @@index([status])
+}
+
+model CampaignPublication {
+  id                Int             @id @default(autoincrement())
+  campaignId        Int
+  platform          String
+  destination       String?
+  status            String          @default("PENDING")
+  externalMessageId String?
+  publishedAt       DateTime?
+  errorMessage      String?
+  responseData      String?
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime
+  PublishCampaign   PublishCampaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+
+  @@unique([campaignId, platform])
+  @@index([publishedAt])
+  @@index([platform, status])
+}
+
+model ContentQueueItem {
+  id                  Int       @id @default(autoincrement())
+  postId              Int
+  contentType         String
+  platform            String    @default("ALL")
+  status              String    @default("READY")
+  priority            Int       @default(100)
+  scheduledAt         DateTime?
+  approvedAt          DateTime?
+  publishedAt         DateTime?
+  publishedCampaignId Int?
+  attempts            Int       @default(0)
+  errorMessage        String?
+  metadata            String?
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime
+  Post                Post      @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  @@index([createdAt])
+  @@index([postId])
+  @@index([contentType, status])
+  @@index([status, scheduledAt])
+}
+
+model GenerationLog {
+  id           Int      @id @default(autoincrement())
+  postId       Int?
+  sourceId     Int?
+  contentType  String
+  provider     String
+  model        String?
+  status       String
+  promptKey    String?
+  errorMessage String?
+  createdAt    DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([status])
+  @@index([contentType])
+}
+
+model ImportRun {
+  id            Int       @id @default(autoincrement())
+  importType    String
+  status        String
+  fetchedCount  Int       @default(0)
+  importedCount Int       @default(0)
+  skippedCount  Int       @default(0)
+  summaryPostId Int?
+  startedAt     DateTime  @default(now())
+  completedAt   DateTime?
+  errorMessage  String?
+  metadata      String?
+
+  @@index([startedAt])
+  @@index([status])
+  @@index([importType])
+}
+
+model PostVariant {
+  id           Int       @id @default(autoincrement())
+  postId       Int
+  platform     String
+  title        String?
+  content      String
+  status       String    @default("DRAFT")
+  scheduledAt  DateTime?
+  publishedAt  DateTime?
+  externalId   String?
+  errorMessage String?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime
+  Post         Post      @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  @@unique([postId, platform])
+  @@index([scheduledAt])
+  @@index([platform, status])
+}
+
+model PromptSetting {
   id        Int      @id @default(autoincrement())
-  title     String
+  key       String   @unique
+  name      String
   content   String
-  status    String   @default("DRAFT")
+  isSystem  Boolean  @default(false)
   createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  updatedAt DateTime
+}
+
+model Publication {
+  id                Int       @id @default(autoincrement())
+  postId            Int
+  platform          String
+  destination       String?
+  status            String    @default("PENDING")
+  externalMessageId String?
+  publishedAt       DateTime?
+  errorMessage      String?
+  responseData      String?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime
+  Post              Post      @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  @@unique([postId, platform])
+  @@index([createdAt])
+  @@index([status])
+  @@index([platform])
+}
+
+model PublishCampaign {
+  id                  Int                   @id @default(autoincrement())
+  postId              Int
+  status              String                @default("PENDING")
+  scheduledAt         DateTime?
+  startedAt           DateTime?
+  completedAt         DateTime?
+  createdAt           DateTime              @default(now())
+  CampaignPublication CampaignPublication[]
+  Post                Post                  @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  @@index([createdAt])
+  @@index([postId, status])
+}
+
+enum KnowledgeType {
+  PROFILE
+  BOOK
+  VIDEO
+  BLOG
+  NEWS
+  QURAN
+  HADITH
+  DUA
+  ISLAMIC_ARTICLE
+  MARRIAGE_GUIDE
+  MARRIAGE_TIP
+  FAMILY_LIFE
+  STATISTICS
+  AI_INSIGHT
+  MANUAL
+  EXTERNAL_API
+}
+
+enum KnowledgeStatus {
+  DRAFT
+  PENDING_APPROVAL
+  APPROVED
+  REJECTED
+  ARCHIVED
+}
+
+model KnowledgeItem {
+  id          Int             @id @default(autoincrement())
+  type        KnowledgeType
+  title       String
+  content     String
+  summary     String?
+  language    String          @default("en")
+  category    String?
+  subcategory String?
+  metadata    Json?
+  references  Json?
+  tags        Json?
+  status      KnowledgeStatus @default(DRAFT)
+  sourceId    Int?
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+
+  @@unique([type, title, language])
+  @@index([type])
+  @@index([status])
+  @@index([language])
+  @@index([category])
+  @@index([subcategory])
+  @@index([createdAt])
 }

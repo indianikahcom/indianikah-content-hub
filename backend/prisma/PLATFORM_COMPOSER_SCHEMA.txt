@@ -1,0 +1,43 @@
+Add these models/enums to prisma/schema.prisma:
+
+enum Platform {
+  FACEBOOK
+  INSTAGRAM
+  X
+  LINKEDIN
+  TELEGRAM
+  WHATSAPP
+  YOUTUBE
+}
+
+enum VariantStatus {
+  DRAFT
+  READY
+  PUBLISHED
+  FAILED
+}
+
+model PostVariant {
+  id          Int           @id @default(autoincrement())
+  postId      Int
+  platform    Platform
+  title       String?
+  content     String
+  status      VariantStatus @default(DRAFT)
+  scheduledAt DateTime?
+  publishedAt DateTime?
+  externalId  String?
+  errorMessage String?
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  post        Post           @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  @@unique([postId, platform])
+  @@index([platform, status])
+  @@index([scheduledAt])
+}
+
+Also add this relation inside the existing Post model:
+
+  variants PostVariant[]

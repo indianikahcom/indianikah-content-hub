@@ -1,0 +1,54 @@
+// REFERENCE ONLY.
+// Your migration is already applied. Compare this with the existing schema.
+// The runtime repository expects Prisma Client property: prisma.knowledgeItem.
+
+enum KnowledgeType {
+  PROFILE
+  BOOK
+  VIDEO
+  BLOG
+  NEWS
+  QURAN
+  HADITH
+  DUA
+  ISLAMIC_ARTICLE
+  MARRIAGE_GUIDE
+  MARRIAGE_TIP
+  FAMILY_LIFE
+  STATISTICS
+  AI_INSIGHT
+  MANUAL
+  EXTERNAL_API
+}
+
+enum KnowledgeStatus {
+  DRAFT
+  PENDING_APPROVAL
+  APPROVED
+  REJECTED
+  ARCHIVED
+}
+
+model KnowledgeItem {
+  id          Int             @id @default(autoincrement())
+  type        KnowledgeType
+  title       String
+  content     String
+  summary     String?
+  language    String          @default("en")
+  category    String?
+  subcategory String?
+  metadata    Json?
+  references  Json?
+  tags        Json?
+  status      KnowledgeStatus @default(DRAFT)
+  sourceId    Int?
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+
+  @@index([type, status])
+  @@index([category, subcategory])
+  @@index([language])
+  @@index([createdAt])
+  @@unique([type, title, language])
+}

@@ -1,0 +1,120 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+enum KnowledgeType {
+  PROFILE
+  BOOK
+  VIDEO
+  BLOG
+  NEWS
+
+  QURAN
+  HADITH
+  DUA
+  ISLAMIC_ARTICLE
+
+  MARRIAGE_GUIDE
+  MARRIAGE_TIP
+  FAMILY_LIFE
+
+  STATISTICS
+  AI_INSIGHT
+
+  MANUAL
+  EXTERNAL_API
+}
+
+enum KnowledgeStatus {
+  DRAFT
+  PENDING_APPROVAL
+  APPROVED
+  REJECTED
+  ARCHIVED
+}
+
+model KnowledgeItem {
+  id          Int           @id @default(autoincrement())
+  type        KnowledgeType
+  title       String
+  content     String
+  summary     String?
+  language    String        @default("en")
+  category    String?
+  subcategory String?
+
+  metadata   Json?
+  references Json?
+  tags       Json?
+
+  status KnowledgeStatus @default(DRAFT)
+
+  sourceId Int?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([type, title, language])
+  @@index([type])
+  @@index([status])
+  @@index([language])
+  @@index([category])
+  @@index([subcategory])
+  @@index([createdAt])
+}
+enum KnowledgeType {
+  PROFILE
+  BOOK
+  VIDEO
+  BLOG
+  NEWS
+  QURAN
+  HADITH
+  DUA
+  ISLAMIC_ARTICLE
+  MARRIAGE_GUIDE
+  MARRIAGE_TIP
+  FAMILY_LIFE
+  STATISTICS
+  AI_INSIGHT
+  MANUAL
+  EXTERNAL_API
+}
+
+enum KnowledgeStatus {
+  DRAFT
+  PENDING_APPROVAL
+  APPROVED
+  REJECTED
+  ARCHIVED
+}
+
+model KnowledgeItem {
+  id          Int             @id @default(autoincrement())
+  type        KnowledgeType
+  title       String
+  content     String
+  summary     String?
+  language    String          @default("en")
+  category    String?
+  subcategory String?
+  metadata    Json?
+  references  Json?
+  tags        Json?
+  status      KnowledgeStatus @default(DRAFT)
+  sourceId    Int?
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+
+  @@unique([type, title, language])
+  @@index([type])
+  @@index([status])
+  @@index([language])
+  @@index([category])
+  @@index([subcategory])
+  @@index([createdAt])
+}

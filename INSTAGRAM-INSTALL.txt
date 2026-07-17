@@ -1,0 +1,27 @@
+IndiaNikah Instagram Publisher
+==============================
+
+1. Copy this ZIP over your backend folder, preserving paths.
+2. Copy the Instagram variables from .env.instagram.example into your existing .env.
+3. Replace YOUR_SYSTEM_USER_TOKEN with the System User token that worked in PowerShell.
+4. Ensure PUBLISH_PLATFORMS contains INSTAGRAM.
+5. Restart the backend: npm run dev
+6. Test:
+
+Invoke-RestMethod `
+  -Uri "http://localhost:3000/api/posts/21/publish" `
+  -Method Post `
+  -ContentType "application/json" `
+  -Body '{"platforms":["INSTAGRAM"]}' |
+ConvertTo-Json -Depth 20
+
+Image selection priority
+------------------------
+The publisher checks post/source fields and source metadata for imageUrl,
+thumbnailUrl, coverUrl, featuredImage, and YouTube thumbnail fields.
+If none is found, it uses INSTAGRAM_DEFAULT_IMAGE_URL.
+
+Security
+--------
+Never commit .env or the System User token.
+A token pasted into chat or logs should be revoked and regenerated.

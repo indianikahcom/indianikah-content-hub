@@ -1,0 +1,82 @@
+const {
+    enabledPlatforms,
+    testFacebookConnection,
+} = require("../services/platformPublishers");
+
+async function list(req, res, next) {
+    try {
+        const configured = enabledPlatforms();
+
+        return res.json({
+            success: true,
+            data: [
+                {
+                    platform: "TELEGRAM",
+                    enabled: configured.includes("TELEGRAM"),
+                    configured: Boolean(
+                        process.env.TELEGRAM_BOT_TOKEN &&
+                            process.env
+                                .TELEGRAM_CHANNEL_ID
+                    ),
+                },
+                {
+                    platform: "FACEBOOK",
+                    enabled: configured.includes("FACEBOOK"),
+                    configured: Boolean(
+                        process.env.FACEBOOK_PAGE_ID &&
+                            process.env
+                                .FACEBOOK_PAGE_ACCESS_TOKEN
+                    ),
+                },
+                {
+                    platform: "INSTAGRAM",
+                    enabled: configured.includes("INSTAGRAM"),
+                    configured: false,
+                },
+                {
+                    platform: "LINKEDIN",
+                    enabled: configured.includes("LINKEDIN"),
+                    configured: false,
+                },
+                {
+                    platform: "X",
+                    enabled: configured.includes("X"),
+                    configured: false,
+                },
+                {
+                    platform: "YOUTUBE",
+                    enabled: configured.includes("YOUTUBE"),
+                    configured: false,
+                },
+                {
+                    platform: "WHATSAPP",
+                    enabled: configured.includes("WHATSAPP"),
+                    configured: false,
+                },
+            ],
+        });
+    } catch (error) {
+        next(error);
+    }
+}
+
+async function testFacebook(req, res, next) {
+    try {
+        const data =
+            await testFacebookConnection();
+
+        return res.json({
+            success: true,
+            message:
+                "Facebook Page connection is working",
+            data,
+        });
+    } catch (error) {
+        next(error);
+    }
+}
+
+module.exports = {
+    list,
+    testFacebook,
+};

@@ -1,0 +1,22 @@
+IndiaNikah Content Hub - Instagram publisher patch
+
+1. Copy the included src folder over backend/src.
+2. Add to backend/.env:
+
+PUBLISH_PLATFORMS=TELEGRAM,FACEBOOK,LINKEDIN,INSTAGRAM
+INSTAGRAM_PUBLISH_ENABLED=true
+INSTAGRAM_GRAPH_VERSION=v25.0
+INSTAGRAM_USER_ID=17841456129245094
+INSTAGRAM_SYSTEM_USER_TOKEN=YOUR_SYSTEM_USER_TOKEN
+INSTAGRAM_DEFAULT_IMAGE_URL=https://www.indianikah.com/kaba.png
+
+3. Restart backend:
+   npm run dev
+
+4. Test:
+Invoke-RestMethod `
+  -Uri "http://localhost:3000/api/posts/21/publish" `
+  -Method Post `
+  -ContentType "application/json" `
+  -Body '{"platforms":["INSTAGRAM"]}' |
+ConvertTo-Json -Depth 20

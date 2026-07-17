@@ -1,0 +1,7 @@
+In src/app.js add near the other route imports:
+
+const knowledgeRoutes = require("./routes/knowledgeRoutes");
+
+Then add before the global error handler:
+
+app.use("/api", knowledgeRoutes);

@@ -1,0 +1,85 @@
+Add the following relation to model ContentSource:
+
+  knowledgeItem KnowledgeItem?
+
+Then append these models to prisma/schema.prisma:
+
+model KnowledgeItem {
+  id               Int                  @id @default(autoincrement())
+  type             String
+  category         String?
+  subcategory      String?
+  title            String
+  slug             String?              @unique
+  language         String               @default("en")
+  sourceName       String?
+  sourceUrl        String?
+  externalId       String?              @unique
+  author           String?
+  publisher        String?
+  reference        String?
+  originalArabic   String?
+  translation      String?
+  content          String
+  summary          String?
+  aiExplanation    String?
+  aiCaption        String?
+  aiHashtags       String?
+  keywords         String?
+  metadata         String?
+  referenceQuality String               @default("UNVERIFIED")
+  confidenceScore  Float?
+  status           String               @default("DRAFT")
+  contentSourceId  Int?                 @unique
+  contentSource    ContentSource?       @relation(fields: [contentSourceId], references: [id], onDelete: SetNull)
+  references       KnowledgeReference[]
+  assets           KnowledgeAsset[]
+  createdAt        DateTime             @default(now())
+  updatedAt        DateTime             @updatedAt
+
+  @@index([type, status])
+  @@index([category])
+  @@index([referenceQuality])
+}
+
+model KnowledgeReference {
+  id                Int           @id @default(autoincrement())
+  knowledgeItemId   Int
+  knowledgeItem     KnowledgeItem @relation(fields: [knowledgeItemId], references: [id], onDelete: Cascade)
+  referenceType     String        @default("UNVERIFIED")
+  sourceName        String?
+  sourceUrl         String?
+  citation          String?
+  collection        String?
+  book              String?
+  chapter           String?
+  referenceNumber   String?
+  authenticity      String?
+  narrator          String?
+  translationName   String?
+  notes              String?
+  isPrimary         Boolean       @default(false)
+  createdAt         DateTime      @default(now())
+
+  @@index([knowledgeItemId])
+  @@index([collection, referenceNumber])
+}
+
+model KnowledgeAsset {
+  id              Int           @id @default(autoincrement())
+  knowledgeItemId Int
+  knowledgeItem   KnowledgeItem @relation(fields: [knowledgeItemId], references: [id], onDelete: Cascade)
+  assetType       String
+  provider        String?
+  model           String?
+  url             String?
+  localPath       String?
+  mimeType        String?
+  prompt          String?
+  metadata        String?
+  status          String        @default("READY")
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  @@index([knowledgeItemId, assetType])
+}

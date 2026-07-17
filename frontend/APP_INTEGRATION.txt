@@ -1,0 +1,26 @@
+Integrate PlatformVariants into frontend/src/App.jsx.
+
+1. Add imports near the top:
+
+import PlatformVariants from "./components/PlatformVariants";
+import "./platformVariants.css";
+
+2. Find the post detail modal or post edit modal where selectedPost/editingPost content is displayed.
+
+Add this inside the modal body, after the main post content:
+
+<PlatformVariants
+  postId={selectedPost?.id || editingPost?.id}
+  showToast={showToast}
+/>
+
+Only render it when an ID exists:
+
+{(selectedPost?.id || editingPost?.id) ? (
+  <PlatformVariants
+    postId={selectedPost?.id || editingPost?.id}
+    showToast={showToast}
+  />
+) : null}
+
+No Prisma migration is required for this patch if PostVariant already exists.

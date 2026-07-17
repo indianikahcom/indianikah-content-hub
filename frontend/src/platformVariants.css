@@ -1,0 +1,132 @@
+.variant-panel {
+  margin-top: 22px;
+  border-top: 1px solid #e3ece9;
+  padding-top: 20px;
+}
+
+.variant-heading,
+.variant-editor-header,
+.variant-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.variant-heading {
+  margin-bottom: 16px;
+}
+
+.variant-heading h3 {
+  margin: 4px 0 0;
+}
+
+.variant-tabs {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+
+.variant-tab {
+  border: 1px solid #d7e3e0;
+  background: #f7faf9;
+  border-radius: 10px;
+  padding: 9px 12px;
+  display: grid;
+  gap: 3px;
+  text-align: left;
+}
+
+.variant-tab.active {
+  border-color: #0f766e;
+  background: #e7f4f1;
+}
+
+.variant-tab small {
+  font-size: 10px;
+  color: #7b8f8a;
+}
+
+.variant-tab small.ready {
+  color: #167044;
+  font-weight: 800;
+}
+
+.variant-editor {
+  background: #f8fbfa;
+  border: 1px solid #dfe9e6;
+  border-radius: 14px;
+  padding: 16px;
+  display: grid;
+  gap: 14px;
+}
+
+.variant-editor-header span {
+  display: block;
+  color: #718781;
+  font-size: 12px;
+  margin-top: 3px;
+}
+
+.variant-editor label {
+  display: grid;
+  gap: 7px;
+  font-weight: 750;
+}
+
+.variant-editor input,
+.variant-editor textarea {
+  border: 1px solid #cfded9;
+  border-radius: 9px;
+  padding: 10px 12px;
+  background: white;
+  color: #18312d;
+  line-height: 1.55;
+}
+
+.variant-status {
+  border-radius: 999px;
+  padding: 5px 9px;
+  font-size: 11px !important;
+  font-weight: 850;
+}
+
+.variant-status.draft {
+  background: #edf1f0;
+  color: #60736e;
+}
+
+.variant-status.ready {
+  background: #e4f7ec;
+  color: #167044;
+}
+
+.variant-status.published {
+  background: #e6f0ff;
+  color: #2459a9;
+}
+
+.variant-actions {
+  justify-content: flex-end;
+  flex-wrap: wrap;
+}
+
+.variant-empty {
+  padding: 24px;
+  border: 1px dashed #cbdad6;
+  border-radius: 12px;
+  text-align: center;
+}
+
+@media (max-width: 700px) {
+  .variant-heading,
+  .variant-editor-header {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .variant-actions .button {
+    flex: 1 1 150px;
+  }
+}

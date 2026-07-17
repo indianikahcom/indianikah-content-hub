@@ -1,0 +1,27 @@
+IndiaNikah AI Content Hub - Approval & Platform Editor v1
+
+Adds backend:
+- PUT /api/composer/variants/:variantId
+- PATCH /api/composer/variants/:variantId/status
+- edit title/content
+- DRAFT <-> READY workflow
+- published variant edit protection
+- duplicate author cleanup
+- duplicate "100% free forever" cleanup
+
+Adds frontend:
+- full PlatformVariants editor
+- platform tabs
+- character count
+- Save
+- Mark READY
+- Return to DRAFT
+- Recompose all
+
+Apply:
+1. Extract this ZIP.
+2. Copy backend and frontend folders over your project.
+3. Keep .env and prisma/dev.db.
+4. No Prisma migration is required.
+5. Apply frontend/APP_INTEGRATION.txt to App.jsx.
+6. Restart backend and frontend.
