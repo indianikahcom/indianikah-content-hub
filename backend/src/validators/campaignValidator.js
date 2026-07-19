@@ -1,17 +1,34 @@
 const { z } = require("zod");
 
-const idParams = z.object({ id: z.coerce.number().int().positive() });
+const idParams = z.object({
+  id: z.coerce.number().int().positive(),
+});
 
 const publishSchema = z.object({
   params: idParams,
-  body: z.object({
-    platforms: z.union([
-      z.literal("ALL"),
-      z.array(z.string().trim().min(1)).min(1)
-    ]).default("ALL")
-  }).default({})
+
+  body: z
+      .object({
+        platforms: z
+            .union([
+              z.literal("ALL"),
+              z.array(z.string().trim().min(1)).min(1),
+            ])
+            .default("ALL"),
+
+        sendEmail: z
+            .boolean()
+            .optional()
+            .default(true),
+      })
+      .default({}),
 });
 
-const idSchema = z.object({ params: idParams });
+const idSchema = z.object({
+  params: idParams,
+});
 
-module.exports = { publishSchema, idSchema };
+module.exports = {
+  publishSchema,
+  idSchema,
+};

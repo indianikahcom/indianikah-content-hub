@@ -1,5 +1,15 @@
 const prisma = require("../database/prisma");
 
+const postIncludes = {
+    publications: {
+        orderBy: { createdAt: "desc" }
+    },
+    variants: {
+        orderBy: { createdAt: "asc" }
+    },
+    source: true
+};
+
 async function createPost(postData) {
     return prisma.post.create({
         data: postData
@@ -8,18 +18,8 @@ async function createPost(postData) {
 
 async function getAllPosts(status) {
     return prisma.post.findMany({
-        where: status
-            ? {
-                status
-            }
-            : undefined,
-
-        include: {
-            publications: {
-                orderBy: { createdAt: "desc" }
-            }
-        },
-
+        where: status ? { status } : undefined,
+        include: postIncludes,
         orderBy: {
             createdAt: "desc"
         }
@@ -31,11 +31,7 @@ async function getPostById(postId) {
         where: {
             id: postId
         },
-        include: {
-            publications: {
-                orderBy: { createdAt: "desc" }
-            }
-        }
+        include: postIncludes
     });
 }
 
@@ -44,8 +40,8 @@ async function updatePost(postId, postData) {
         where: {
             id: postId
         },
-
-        data: postData
+        data: postData,
+        include: postIncludes
     });
 }
 
@@ -54,10 +50,10 @@ async function updatePostStatus(postId, status) {
         where: {
             id: postId
         },
-
         data: {
             status
-        }
+        },
+        include: postIncludes
     });
 }
 

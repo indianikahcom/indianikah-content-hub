@@ -1,4 +1,4 @@
-const postVariantRepository = require("../repositories/postVariantRepository");
+﻿const postVariantRepository = require("../repositories/postVariantRepository");
 const AppError = require("../errors/AppError");
 
 const PLATFORMS = ["FACEBOOK", "INSTAGRAM", "X", "LINKEDIN", "TELEGRAM", "WHATSAPP", "YOUTUBE"];
@@ -11,13 +11,13 @@ function clean(value) {
 function truncate(text, max) {
     const value = clean(text);
     if (value.length <= max) return value;
-    return `${value.slice(0, Math.max(0, max - 1)).trim()}…`;
+    return `${value.slice(0, Math.max(0, max - 1)).trim()}â€¦`;
 }
 
 function normalizeBody(text) {
     return clean(text)
         .replace(/\n?Please review the article before sharing\.\s*/gi, "\n")
-        .replace(/IndiaNikah\s*[—-]\s*100% free forever\.\s*\n+\s*IndiaNikah is 100% free forever\./gi, "IndiaNikah — 100% free forever.")
+        .replace(/IndiaNikah\s*[â€”-]\s*100% free forever\.\s*\n+\s*IndiaNikah is 100% free forever\./gi, "IndiaNikah â€” 100% free forever.")
         .replace(/\n{3,}/g, "\n\n")
         .trim();
 }
@@ -88,7 +88,7 @@ function composeLinkedIn(post, source) {
     const body = sourceBody(post, source);
     const brandLine = /100% free forever/i.test(body)
         ? ""
-        : "\n\nIndiaNikah — 100% free forever.";
+        : "\n\nIndiaNikah â€” 100% free forever.";
     return {
         title: post.title,
         content: `${body}${brandLine}\n\n${hashtags(source?.type)}`
@@ -155,3 +155,4 @@ module.exports = {
     getVariants,
     PLATFORMS
 };
+

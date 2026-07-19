@@ -1,3 +1,7 @@
+﻿const {
+    BRAND_BLOCK,
+    appendBranding
+} = require("../config/branding");
 const contentGenerationRepository = require("../repositories/contentGenerationRepository");
 const sourceService = require("./sourceService");
 const AppError = require("../errors/AppError");
@@ -26,14 +30,14 @@ function bookTemplate(source) {
     const pdfUrl = clean(metadata.pdfUrl);
 
     const lines = [
-        `📚 Recommended reading: ${title}`,
+        `ðŸ“š Recommended reading: ${title}`,
         author ? `Author: ${author}` : null,
         language ? `Language: ${language}` : null,
         "",
         "Read and benefit from this free resource on IndiaNikah.",
         pdfUrl ? `Read here: ${pdfUrl}` : null,
         "",
-        "IndiaNikah — 100% free forever."
+        "IndiaNikah â€” 100% free forever."
     ].filter((line) => line !== null);
 
     return {
@@ -49,14 +53,14 @@ function guidelineTemplate(source) {
     const videoUrl = clean(source.sourceUrl);
 
     const lines = [
-        `💡 Marriage Guidance`,
+        `ðŸ’¡ Marriage Guidance`,
         title,
         hindiTitle ? `(${hindiTitle})` : null,
         "",
         "Watch this short guidance and discuss the topic with your family before making an important marriage decision.",
         videoUrl ? `Watch here: ${videoUrl}` : null,
         "",
-        "IndiaNikah — 100% free forever."
+        "IndiaNikah â€” 100% free forever."
     ].filter((line) => line !== null);
 
     return {
@@ -72,14 +76,14 @@ function blogTemplate(source) {
     const link = clean(source.sourceUrl);
 
     const lines = [
-        `📝 New article`,
+        `ðŸ“ New article`,
         title,
         previewTitle && previewTitle !== title ? previewTitle : null,
         "",
         "Read the full article for practical guidance on marriage and family life.",
         link ? `Read here: ${link}` : null,
         "",
-        "Please review the article before sharing. IndiaNikah — 100% free forever."
+        "Please review the article before sharing. IndiaNikah â€” 100% free forever."
     ].filter((line) => line !== null);
 
     return {
@@ -142,3 +146,4 @@ module.exports = {
     generateNext,
     generateBundle
 };
+

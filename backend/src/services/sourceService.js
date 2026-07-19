@@ -10,12 +10,20 @@ const allowedTransitions = {
 };
 
 function serializeMetadata(metadata) {
-    if (metadata === undefined || metadata === null || metadata === "") return null;
-    return typeof metadata === "string" ? metadata : JSON.stringify(metadata);
+    if (metadata === undefined || metadata === null || metadata === "") {
+        return null;
+    }
+
+    return typeof metadata === "string"
+        ? metadata
+        : JSON.stringify(metadata);
 }
 
 function parseMetadata(metadata) {
-    if (!metadata) return null;
+    if (!metadata) {
+        return null;
+    }
+
     try {
         return JSON.parse(metadata);
     } catch {
@@ -24,13 +32,23 @@ function parseMetadata(metadata) {
 }
 
 function present(source) {
-    return { ...source, metadata: parseMetadata(source.metadata) };
+    return {
+        ...source,
+        metadata: parseMetadata(source.metadata)
+    };
 }
 
 async function createSource(sourceData) {
     const externalId = sourceData.externalId?.trim() || null;
-    if (externalId && await sourceRepository.findByExternalId(externalId)) {
-        throw new AppError(`A content source with external ID "${externalId}" already exists`, 409);
+
+    if (
+        externalId &&
+        (await sourceRepository.findByExternalId(externalId))
+    ) {
+        throw new AppError(
+            `A content source with external ID "${externalId}" already exists`,
+            409
+        );
     }
 
     const source = await sourceRepository.create({
@@ -49,6 +67,7 @@ async function createSource(sourceData) {
 async function getAllSources(filters) {
     const page = filters.page || 1;
     const limit = filters.limit || 20;
+
     const result = await sourceRepository.findAll({
         type: filters.type?.trim().toUpperCase(),
         status: filters.status?.trim().toUpperCase(),
@@ -70,48 +89,102 @@ async function getAllSources(filters) {
 
 async function getSourceById(id) {
     const source = await sourceRepository.findById(id);
-    if (!source) throw new AppError("Content source not found", 404);
+
+    if (!source) {
+        throw new AppError("Content source not found", 404);
+    }
+
     return present(source);
 }
 
 async function updateSourceStatus(id, requestedStatus) {
     const source = await sourceRepository.findById(id);
-    if (!source) throw new AppError("Content source not found", 404);
+
+    if (!source) {
+        throw new AppError("Content source not found", 404);
+    }
 
     const allowedStatuses = allowedTransitions[source.status] || [];
+
     if (!allowedStatuses.includes(requestedStatus)) {
         throw new AppError(
             `Cannot change content source status from ${source.status} to ${requestedStatus}`,
             409,
-            { currentStatus: source.status, requestedStatus, allowedStatuses }
+            {
+                currentStatus: source.status,
+                requestedStatus,
+                allowedStatuses
+            }
         );
     }
 
-    return present(await sourceRepository.updateStatus(id, requestedStatus));
+    return present(
+        await sourceRepository.updateStatus(id, requestedStatus)
+    );
 }
 
 function defaultPostContent(source) {
     const parts = [];
-    if (source.title) parts.push(source.title);
-    if (source.rawContent) parts.push(source.rawContent);
-    if (source.sourceUrl) parts.push(`Source: ${source.sourceUrl}`);
+
+    if (source.title) {
+        parts.push(source.title);
+    }
+
+    if (source.rawContent) {
+        parts.push(source.rawContent);
+    }
+
+    if (source.sourceUrl) {
+        parts.push(`Source: ${source.sourceUrl}`);
+    }
+
     return parts.join("\n\n").trim();
 }
 
 async function generateDraftPost(id, overrides = {}) {
     const source = await sourceRepository.findById(id);
-    if (!source) throw new AppError("Content source not found", 404);
-    if (source.post) throw new AppError("A draft post has already been generated from this source", 409, { postId: source.post.id });
-    if (["REJECTED", "ARCHIVED"].includes(source.status)) {
-        throw new AppError(`Cannot generate a post from a ${source.status} source`, 409);
+
+    if (!source) {
+        throw new AppError("Content source not found", 404);
     }
 
-    const title = overrides.title || source.title || `${source.type} content`;
-    const content = overrides.content || defaultPostContent(source);
-    if (!content) throw new AppError("Source has no content. Provide content in the request body.", 400);
+    // Allow multiple posts from the same source.
+    // This is required for regenerating profile summaries,
+    // editing formatting, retrying generation, etc.
 
-    const result = await sourceRepository.createDraftPostFromSource(source, { title, content });
-    return { post: result.post, source: present(result.source) };
+    if (["REJECTED", "ARCHIVED"].includes(source.status)) {
+        throw new AppError(
+            `Cannot generate a post from a ${source.status} source`,
+            409
+        );
+    }
+
+    const title =
+        overrides.title ||
+        source.title ||
+        `${source.type} content`;
+
+    const content =
+        overrides.content ||
+        defaultPostContent(source);
+
+    if (!content) {
+        throw new AppError(
+            "Source has no content. Provide content in the request body.",
+            400
+        );
+    }
+
+    const result =
+        await sourceRepository.createDraftPostFromSource(source, {
+            title,
+            content
+        });
+
+    return {
+        post: result.post,
+        source: present(result.source)
+    };
 }
 
 module.exports = {

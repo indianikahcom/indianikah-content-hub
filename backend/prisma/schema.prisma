@@ -7,20 +7,21 @@ datasource db {
 }
 
 model Post {
-  id               Int                @id @default(autoincrement())
-  title            String
-  content          String
-  status           String             @default("DRAFT")
-  sourceId         Int?               @unique
-  createdAt        DateTime           @default(now())
-  updatedAt        DateTime           @updatedAt
-  ContentQueueItem ContentQueueItem[]
-  source           ContentSource?     @relation(fields: [sourceId], references: [id])
-  PostVariant      PostVariant[]
-  Publication      Publication[]
-  PublishCampaign  PublishCampaign[]
+  id           Int                @id @default(autoincrement())
+  title        String
+  content      String
+  status       String             @default("DRAFT")
+  sourceId     Int?
+  createdAt    DateTime           @default(now())
+  updatedAt    DateTime           @updatedAt
+  source       ContentSource?     @relation(fields: [sourceId], references: [id])
+  queueItems   ContentQueueItem[]
+  variants     PostVariant[]
+  publications Publication[]
+  campaigns    PublishCampaign[]
 
   @@index([status])
+  @@index([sourceId])
 }
 
 model ContentSource {
@@ -34,7 +35,7 @@ model ContentSource {
   status     String   @default("NEW")
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
-  post       Post?
+  posts      Post[]
 
   @@index([type])
   @@index([status])
@@ -51,8 +52,8 @@ model CampaignPublication {
   errorMessage      String?
   responseData      String?
   createdAt         DateTime        @default(now())
-  updatedAt         DateTime
-  PublishCampaign   PublishCampaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  updatedAt         DateTime        @updatedAt
+  campaign          PublishCampaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
 
   @@unique([campaignId, platform])
   @@index([publishedAt])
@@ -74,8 +75,8 @@ model ContentQueueItem {
   errorMessage        String?
   metadata            String?
   createdAt           DateTime  @default(now())
-  updatedAt           DateTime
-  Post                Post      @relation(fields: [postId], references: [id], onDelete: Cascade)
+  updatedAt           DateTime  @updatedAt
+  post                Post      @relation(fields: [postId], references: [id], onDelete: Cascade)
 
   @@index([createdAt])
   @@index([postId])
@@ -130,8 +131,8 @@ model PostVariant {
   externalId   String?
   errorMessage String?
   createdAt    DateTime  @default(now())
-  updatedAt    DateTime
-  Post         Post      @relation(fields: [postId], references: [id], onDelete: Cascade)
+  updatedAt    DateTime  @updatedAt
+  post         Post      @relation(fields: [postId], references: [id], onDelete: Cascade)
 
   @@unique([postId, platform])
   @@index([scheduledAt])
@@ -145,7 +146,7 @@ model PromptSetting {
   content   String
   isSystem  Boolean  @default(false)
   createdAt DateTime @default(now())
-  updatedAt DateTime
+  updatedAt DateTime @updatedAt
 }
 
 model Publication {
@@ -159,8 +160,8 @@ model Publication {
   errorMessage      String?
   responseData      String?
   createdAt         DateTime  @default(now())
-  updatedAt         DateTime
-  Post              Post      @relation(fields: [postId], references: [id], onDelete: Cascade)
+  updatedAt         DateTime  @updatedAt
+  post              Post      @relation(fields: [postId], references: [id], onDelete: Cascade)
 
   @@unique([postId, platform])
   @@index([createdAt])
@@ -169,15 +170,15 @@ model Publication {
 }
 
 model PublishCampaign {
-  id                  Int                   @id @default(autoincrement())
-  postId              Int
-  status              String                @default("PENDING")
-  scheduledAt         DateTime?
-  startedAt           DateTime?
-  completedAt         DateTime?
-  createdAt           DateTime              @default(now())
-  CampaignPublication CampaignPublication[]
-  Post                Post                  @relation(fields: [postId], references: [id], onDelete: Cascade)
+  id           Int                   @id @default(autoincrement())
+  postId       Int
+  status       String                @default("PENDING")
+  scheduledAt  DateTime?
+  startedAt    DateTime?
+  completedAt  DateTime?
+  createdAt    DateTime              @default(now())
+  publications CampaignPublication[]
+  post         Post                  @relation(fields: [postId], references: [id], onDelete: Cascade)
 
   @@index([createdAt])
   @@index([postId, status])

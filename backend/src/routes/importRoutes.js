@@ -5,6 +5,7 @@ const { importProfilesSchema, importBlogsSchema, importAllSchema, listImportsSch
 
 const router = express.Router();
 router.get("/connection", importController.testConnection);
+router.get("/status", importController.importStatus);
 router.get("/", validate(listImportsSchema), importController.listImports);
 router.post("/profiles", validate(importProfilesSchema), importController.importProfiles);
 router.post("/books", importController.importBooks);

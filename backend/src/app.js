@@ -1,3 +1,4 @@
+const publishingRoutes = require("./routes/publishingRoutes");
 const express = require("express");
 const path = require("path");
 
@@ -17,7 +18,9 @@ const queueRoutes = require("./routes/queueRoutes");
 const dashboardRoutes = require("./routes/dashboardRoutes");
 const platformRoutes = require("./routes/platformRoutes");
 const imageGenerationRoutes = require("./routes/imageGenerationRoutes");
+const milestone3Routes = require("./routes/milestone3Routes");
 
+const profileSummaryRoutes = require("./routes/profileSummaryRoutes");
 const errorHandler = require("./middleware/errorHandler");
 
 const app = express();
@@ -47,6 +50,7 @@ app.use("/api/composer", composerRoutes);
 app.use("/api/prompts", promptRoutes);
 app.use("/api/ai", aiGenerationRoutes);
 app.use("/api/images", imageGenerationRoutes);
+app.use("/api/milestone3", milestone3Routes);
 
 app.use("/api/automation", automationRoutes);
 app.use("/api", campaignRoutes);
@@ -55,6 +59,10 @@ app.use("/api/dashboard", dashboardRoutes);
 app.use("/api/platforms", platformRoutes);
 
 // Global error handler must remain last
+app.use("/api/profile-summaries", profileSummaryRoutes);
+
+app.use("/api/publishing", publishingRoutes);
+
 app.use(errorHandler);
 
 module.exports = app;

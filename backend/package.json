@@ -7,7 +7,16 @@
     "dev": "nodemon src/server.js",
     "start": "node src/server.js",
     "prisma:generate": "prisma generate",
-    "prisma:migrate": "prisma migrate dev"
+    "prisma:migrate": "prisma migrate dev",
+    "test:milestone2": "node scripts/smoke-test-milestone-2.js",
+    "test:milestone3": "node scripts/smoke-test-milestone-3.js",
+    "install:milestone4": "node scripts/install-milestone-4.js",
+    "test:milestone4": "node scripts/smoke-test-milestone-4.js",
+    "test:milestone4:v2": "node scripts/smoke-test-milestone-4-v2.js",
+    "install:milestone5": "node scripts/install-milestone-5.js",
+    "test:milestone5": "node scripts/smoke-test-milestone-5.js",
+    "test:stabilization": "node scripts/smoke-test-stabilization.js",
+    "check:syntax": "node scripts/check-syntax.js"
   },
   "dependencies": {
     "@prisma/adapter-better-sqlite3": "7.8.0",
@@ -17,7 +26,8 @@
     "mysql2": "^3.14.5",
     "node-cron": "^4.2.1",
     "winston": "^3.17.0",
-    "zod": "^4.1.12"
+    "zod": "^4.1.12",
+    "nodemailer": "^7.0.3"
   },
   "devDependencies": {
     "nodemon": "^3.1.10",
