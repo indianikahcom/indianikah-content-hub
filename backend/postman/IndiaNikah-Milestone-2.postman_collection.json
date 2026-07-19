@@ -1,0 +1,12 @@
+{
+  "info": { "name": "IndiaNikah Content Hub - Milestone 2", "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json" },
+  "variable": [{ "key": "baseUrl", "value": "http://localhost:3000" }],
+  "item": [
+    { "name": "Production DB connection", "request": { "method": "GET", "url": "{{baseUrl}}/api/imports/connection" } },
+    { "name": "Import status", "request": { "method": "GET", "url": "{{baseUrl}}/api/imports/status" } },
+    { "name": "Import history", "request": { "method": "GET", "url": "{{baseUrl}}/api/imports?limit=20" } },
+    { "name": "Cursor dry run", "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"mode\": \"CURSOR\",\n  \"batchSize\": 250,\n  \"maxBatches\": 1,\n  \"startAfterId\": 0,\n  \"dryRun\": true\n}" }, "url": "{{baseUrl}}/api/imports/profiles" } },
+    { "name": "Cursor real import", "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"mode\": \"CURSOR\",\n  \"batchSize\": 250,\n  \"maxBatches\": 1,\n  \"dryRun\": false\n}" }, "url": "{{baseUrl}}/api/imports/profiles" } },
+    { "name": "Recent 24-hour summary", "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"mode\": \"RECENT\",\n  \"hours\": 24,\n  \"limit\": 1000,\n  \"generateSummary\": true\n}" }, "url": "{{baseUrl}}/api/imports/profiles" } }
+  ]
+}

@@ -1,0 +1,9 @@
+{
+  "info": {"name": "IndiaNikah Milestone 3", "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"},
+  "variable": [{"key": "baseUrl", "value": "http://localhost:3000"}, {"key": "sourceId", "value": "347"}, {"key": "postId", "value": "1"}],
+  "item": [
+    {"name": "Generate source with template", "request": {"method": "POST", "header": [{"key": "Content-Type", "value": "application/json"}], "body": {"mode": "raw", "raw": "{\n  \"provider\": \"TEMPLATE\",\n  \"composePlatforms\": true\n}"}, "url": "{{baseUrl}}/api/milestone3/sources/{{sourceId}}/generate"}},
+    {"name": "Generate profile batch", "request": {"method": "POST", "header": [{"key": "Content-Type", "value": "application/json"}], "body": {"mode": "raw", "raw": "{\n  \"provider\": \"TEMPLATE\",\n  \"type\": \"PROFILE\",\n  \"limit\": 5,\n  \"composePlatforms\": true\n}"}, "url": "{{baseUrl}}/api/milestone3/batch/generate"}},
+    {"name": "Preview generated post", "request": {"method": "GET", "url": "{{baseUrl}}/api/milestone3/posts/{{postId}}/preview"}}
+  ]
+}
