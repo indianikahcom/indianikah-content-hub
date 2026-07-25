@@ -12,10 +12,11 @@ const stats = buildProfileSummaryStats(profiles, { topLimit: 5 });
 const post = buildSummaryPost(stats, { hours: 24 });
 
 assert.equal(stats.totalProfiles, 3);
-assert.match(post.content, /👥 Gender/);
-assert.match(post.content, /💼 Occupations/);
-assert.match(post.content, /🎓 Education/);
+assert.match(post.content, /Gender/);
+assert.match(post.content, /Occupations/);
+assert.match(post.content, /Education/);
 assert.doesNotMatch(post.content, /\(\d+(?:\.\d+)?%\)/);
 assert.doesNotMatch(post.content, /Gender-wise|Occupation-wise|Education-wise/);
+assert.doesNotMatch(post.content, /[^\x00-\x7F]/);
 assert.match(post.content, /Anonymous statistics only/);
 console.log("Backend stabilization smoke test passed.");

@@ -37,11 +37,11 @@ function gender(value) {
 function ageGroup(value) {
   const age = Number.parseInt(value, 10);
   if (!Number.isInteger(age) || age < 18 || age > 100) return null;
-  if (age <= 24) return "18–24";
-  if (age <= 29) return "25–29";
-  if (age <= 34) return "30–34";
-  if (age <= 39) return "35–39";
-  if (age <= 44) return "40–44";
+  if (age <= 24) return "18-24";
+  if (age <= 29) return "25-29";
+  if (age <= 34) return "30-34";
+  if (age <= 39) return "35-39";
+  if (age <= 44) return "40-44";
   return "45+";
 }
 

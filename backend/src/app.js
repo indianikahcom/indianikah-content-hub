@@ -3,6 +3,7 @@ const express = require("express");
 const path = require("path");
 
 const knowledgeRoutes = require("./routes/knowledgeRoutes");
+const knowledgeLibraryRoutes = require("./routes/knowledgeLibraryRoutes");
 const healthRoutes = require("./routes/healthRoutes");
 const postRoutes = require("./routes/postRoutes");
 const sourceRoutes = require("./routes/sourceRoutes");
@@ -40,6 +41,7 @@ app.use("/api", healthRoutes);
 app.use("/api", postRoutes);
 
 app.use("/api/knowledge", knowledgeRoutes);
+app.use("/api/knowledge-library", knowledgeLibraryRoutes);
 
 app.use("/api/sources/random", randomSourceRoutes);
 app.use("/api/sources", sourceRoutes);

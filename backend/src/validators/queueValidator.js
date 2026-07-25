@@ -1,4 +1,4 @@
-const { z } = require("zod");
+﻿const { z } = require("zod");
 
 const idSchema = z.object({
     params: z.object({
@@ -40,3 +40,4 @@ module.exports = {
     addRandomSchema,
     listSchema,
 };
+

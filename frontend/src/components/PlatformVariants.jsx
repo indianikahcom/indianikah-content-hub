@@ -5,12 +5,11 @@ import { api } from "../services/api";
 const PLATFORM_LABELS = {
   FACEBOOK: "Facebook",
   INSTAGRAM: "Instagram",
-  X: "X",
   LINKEDIN: "LinkedIn",
   TELEGRAM: "Telegram",
-  WHATSAPP: "WhatsApp",
-  YOUTUBE: "YouTube",
+  X: "X",
 };
+const ACTIVE_PLATFORMS = new Set(Object.keys(PLATFORM_LABELS));
 
 export default function PlatformVariants({ postId, showToast }) {
   const [variants, setVariants] = useState([]);
@@ -36,7 +35,9 @@ export default function PlatformVariants({ postId, showToast }) {
     setLoading(true);
     try {
       const payload = await api.getPostVariants(postId);
-      const items = payload.data || [];
+      const items = (payload.data || []).filter((variant) =>
+        ACTIVE_PLATFORMS.has(variant.platform)
+      );
       setVariants(items);
       const first = items[0] || null;
       setActiveId(first?.id || null);
@@ -52,7 +53,9 @@ export default function PlatformVariants({ postId, showToast }) {
     setLoading(true);
     try {
       const payload = await api.composePost(postId);
-      const items = payload.data?.variants || [];
+      const items = (payload.data?.variants || []).filter((variant) =>
+        ACTIVE_PLATFORMS.has(variant.platform)
+      );
       setVariants(items);
       const first = items[0] || null;
       setActiveId(first?.id || null);

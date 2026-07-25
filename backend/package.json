@@ -16,18 +16,27 @@
     "install:milestone5": "node scripts/install-milestone-5.js",
     "test:milestone5": "node scripts/smoke-test-milestone-5.js",
     "test:stabilization": "node scripts/smoke-test-stabilization.js",
-    "check:syntax": "node scripts/check-syntax.js"
+    "check:syntax": "node scripts/check-syntax.js",
+    "knowledge:seed": "node scripts/seed-knowledge-packs.js",
+    "test:knowledge-library": "node scripts/smoke-test-knowledge-library.js",
+    "knowledge:seed:quran-marriage": "node scripts/seed-marriage-quran.js",
+    "knowledge:seed:hadith-dua": "node scripts/seed-hadith-dua.js"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.1095.0",
+    "@aws-sdk/s3-request-presigner": "^3.1095.0",
+    "@expo-google-fonts/noto-naskh-arabic": "^0.4.5",
     "@prisma/adapter-better-sqlite3": "7.8.0",
     "@prisma/client": "7.8.0",
     "dotenv": "^17.2.3",
     "express": "^5.1.0",
     "mysql2": "^3.14.5",
     "node-cron": "^4.2.1",
+    "nodemailer": "^7.0.3",
+    "qrcode": "^1.5.4",
+    "sharp": "^0.35.3",
     "winston": "^3.17.0",
-    "zod": "^4.1.12",
-    "nodemailer": "^7.0.3"
+    "zod": "^4.1.12"
   },
   "devDependencies": {
     "nodemon": "^3.1.10",

@@ -1,39 +1,77 @@
 import { useEffect, useMemo, useState } from "react";
 import {
-  Archive,
-  CheckCircle2,
-  ChevronLeft,
-  ChevronRight,
-  FileText,
-  Database,
-  Gauge,
-  Layers3,
-  Settings,
-  Menu,
-  PenLine,
-  Plus,
-  RefreshCw,
-  Search,
-  Send,
-  Sparkles,
-  XCircle,
+  Activity, BarChart3, BookOpen, Bot, Boxes, CalendarClock, CheckCircle2,
+  ChevronDown, Database, FileCheck2, FileText, Gauge, HeartHandshake,
+  Library, ListChecks, Menu, MessageSquareQuote, MoonStar, Newspaper,
+  PanelLeftClose, PanelLeftOpen, Plus, RefreshCw, Search, Send, Settings,
+  ShieldCheck, Sparkles, Users, WandSparkles, Workflow, X
 } from "lucide-react";
 import { api } from "./services/api";
+import AdminOverview from "./components/AdminOverview";
+import ContentQueuePanel from "./components/ContentQueuePanel";
+import KnowledgeLibraryPanel from "./components/KnowledgeLibraryPanel";
+import PromptSettings from "./components/PromptSettings";
+import PublishEverywhere from "./components/PublishEverywhere";
 import StatusBadge from "./components/StatusBadge";
 import Modal from "./components/Modal";
 import Toast from "./components/Toast";
-import ConfirmDialog from "./components/ConfirmDialog";
-import RandomDraftPanel from "./components/RandomDraftPanel";
-import ContentQueuePanel from "./components/ContentQueuePanel";
-import PromptSettings from "./components/PromptSettings";
-import PublishEverywhere from "./components/PublishEverywhere";
-import AdminOverview from "./components/AdminOverview";
 
-const SOURCE_STATUSES = ["", "NEW", "PROCESSING", "PROCESSED", "REJECTED", "ARCHIVED"];
-const POST_STATUSES = ["", "DRAFT", "PENDING_APPROVAL", "APPROVED"];
-const SOURCE_TYPES = ["", "PROFILE", "BOOK", "GUIDELINE", "BLOG", "VIDEO", "NEWS", "ISLAMIC", "OTHER"];
+const STUDIO_TYPES = [
+  { id: "QURAN", title: "Quran", description: "Create reflective posts grounded in approved Quran knowledge.", icon: BookOpen, pack: "QURAN_CONTENT" },
+  { id: "HADITH", title: "Hadith", description: "Prepare referenced Hadith posts from authenticated entries.", icon: MessageSquareQuote, pack: "HADITH_CONTENT" },
+  { id: "DUA", title: "Dua", description: "Generate clear, useful dua reminders with meaning and context.", icon: MoonStar, pack: "DUA_CONTENT" },
+  {
+    id: "MARRIAGE_GUIDE",
+    title: "Marriage guidance",
+    description: "Practical Islamic guidance for spouse selection and married life.",
+    icon: HeartHandshake,
+    automation: "GUIDELINE"
+  },
+  { id: "BOOK", title: "Books", description: "Promote an unpublished book from the IndiaNikah library.", icon: Library, automation: "BOOK" },
+  { id: "BLOG", title: "Blogs", description: "Turn an unpublished blog into a social-ready draft.", icon: FileText, automation: "BLOG" },
+  {
+    id: "NEWS",
+    title: "News",
+    description: "Select a random imported blog and create an AI-generated post.",
+    icon: Newspaper,
+    automation: "BLOG"
+  },
+  {
+    id: "PROFILE",
+    title: "Profile summaries",
+    description: "Generate privacy-first summaries from imported profile statistics.",
+    icon: Users,
+    automation: "PROFILE"
+  },
+  { id: "CUSTOM", title: "Custom AI content", description: "Start a manual brief and use your approved context.", icon: WandSparkles }
+];
 
-function normalizeListResponse(payload) {
+const NAV_GROUPS = [
+  { label: "Workspace", items: [
+    { id: "dashboard", label: "Dashboard", icon: Gauge },
+    { id: "studio", label: "AI Content Studio", icon: Sparkles },
+  ]},
+  { label: "Content", items: [
+    { id: "queue", label: "Content Queue", icon: ListChecks },
+    { id: "posts", label: "Posts & Approval", icon: FileCheck2 },
+    { id: "sources", label: "Content Sources", icon: Database },
+  ]},
+  { label: "Knowledge", items: [
+    { id: "knowledge", label: "Knowledge Library", icon: BookOpen },
+    { id: "packs", label: "Knowledge Packs", icon: Boxes },
+    { id: "prompts", label: "Prompt Settings", icon: Bot },
+  ]},
+  { label: "Operations", items: [
+    { id: "publishing", label: "Publishing", icon: Send },
+    { id: "automation", label: "Automation", icon: Workflow },
+    { id: "analytics", label: "Analytics", icon: BarChart3 },
+    { id: "settings", label: "Settings", icon: Settings },
+  ]},
+];
+
+const allNavigation = NAV_GROUPS.flatMap((group) => group.items);
+
+function normalize(payload) {
   if (Array.isArray(payload)) return payload;
   if (Array.isArray(payload?.data)) return payload.data;
   return [];
@@ -41,163 +79,85 @@ function normalizeListResponse(payload) {
 
 function formatDate(value) {
   if (!value) return "—";
-  return new Intl.DateTimeFormat("en-IN", {
-    dateStyle: "medium",
-    timeStyle: "short",
-  }).format(new Date(value));
-}
-
-function DashboardCard({ label, value, icon: Icon, hint }) {
-  return (
-    <article className="metric-card">
-      <div className="metric-icon"><Icon size={21} /></div>
-      <div>
-        <p>{label}</p>
-        <strong>{value}</strong>
-        <span>{hint}</span>
-      </div>
-    </article>
-  );
+  try {
+    return new Intl.DateTimeFormat("en-IN", { dateStyle: "medium", timeStyle: "short" }).format(new Date(value));
+  } catch {
+    return value;
+  }
 }
 
 function EmptyState({ title, message }) {
-  return (
-    <div className="empty-state">
-      <FileText size={38} />
-      <h3>{title}</h3>
-      <p>{message}</p>
-    </div>
-  );
+  return <div className="workspace-empty"><FileText size={34}/><strong>{title}</strong><span>{message}</span></div>;
+}
+
+function PageHeading({ eyebrow, title, description, actions }) {
+  return <div className="page-heading">
+    <div><p className="eyebrow">{eyebrow}</p><h2>{title}</h2><p>{description}</p></div>
+    {actions ? <div className="page-actions">{actions}</div> : null}
+  </div>;
 }
 
 export default function App() {
   const [activeView, setActiveView] = useState("dashboard");
-  const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [sources, setSources] = useState([]);
-  const [posts, setPosts] = useState([]);
-  const [importRuns, setImportRuns] = useState([]);
-  const [importing, setImporting] = useState(false);
-  const [sourcePagination, setSourcePagination] = useState({ page: 1, totalPages: 1, total: 0, limit: 20 });
-  const [sourceFilters, setSourceFilters] = useState({ search: "", type: "", status: "", page: 1, limit: 20 });
-  const [postStatus, setPostStatus] = useState("");
-  const [loadingSources, setLoadingSources] = useState(false);
-  const [loadingPosts, setLoadingPosts] = useState(false);
-  const [selectedSource, setSelectedSource] = useState(null);
-  const [selectedPost, setSelectedPost] = useState(null);
-  const [editingPost, setEditingPost] = useState(null);
-  const [newPostOpen, setNewPostOpen] = useState(false);
-  const [postForm, setPostForm] = useState({ title: "", content: "" });
-  const [action, setAction] = useState(null);
-  const [busy, setBusy] = useState(false);
+  const [mobileOpen, setMobileOpen] = useState(false);
+  const [compactSidebar, setCompactSidebar] = useState(false);
   const [toast, setToast] = useState(null);
-  const [dashboardRefreshToken, setDashboardRefreshToken] = useState(0);
+  const [refreshToken, setRefreshToken] = useState(0);
+  const [posts, setPosts] = useState([]);
+  const [sources, setSources] = useState([]);
+  const [imports, setImports] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [importing, setImporting] = useState(false);
+  const [postFilter, setPostFilter] = useState("");
+  const [sourceSearch, setSourceSearch] = useState("");
+  const [selectedPost, setSelectedPost] = useState(null);
+  const [manualOpen, setManualOpen] = useState(false);
+  const [manualForm, setManualForm] = useState({ title: "", content: "" });
+  const [studioBrief, setStudioBrief] = useState(null);
+  const [contextPreview, setContextPreview] = useState(null);
+  const [studioBusy, setStudioBusy] = useState("");
 
   const showToast = (title, message = "", type = "success") => {
     setToast({ title, message, type });
-    window.setTimeout(() => setToast(null), 4000);
+    window.setTimeout(() => setToast(null), 4200);
   };
 
-  const loadSources = async (overrides = {}) => {
-    setLoadingSources(true);
+  const loadWorkspace = async () => {
+    setLoading(true);
     try {
-      const filters = { ...sourceFilters, ...overrides };
-      const payload = await api.getSources(filters);
-      setSources(normalizeListResponse(payload));
-      setSourcePagination(payload.pagination || {
-        page: filters.page || 1,
-        totalPages: 1,
-        total: payload.count || 0,
-        limit: filters.limit || 20,
-      });
+      const [postPayload, sourcePayload, importPayload] = await Promise.all([
+        api.getPosts(postFilter ? { status: postFilter } : {}),
+        api.getSources({ limit: 50, search: sourceSearch }),
+        api.getImports({ limit: 8 }),
+      ]);
+      setPosts(normalize(postPayload));
+      setSources(normalize(sourcePayload));
+      setImports(normalize(importPayload));
     } catch (error) {
-      showToast("Could not load sources", error.message, "error");
+      showToast("Could not refresh workspace", error.message, "error");
     } finally {
-      setLoadingSources(false);
+      setLoading(false);
     }
   };
 
-  const loadPosts = async (status = postStatus) => {
-    setLoadingPosts(true);
-    try {
-      const payload = await api.getPosts(status ? { status } : {});
-      setPosts(normalizeListResponse(payload));
-    } catch (error) {
-      showToast("Could not load posts", error.message, "error");
-    } finally {
-      setLoadingPosts(false);
-    }
+  useEffect(() => { loadWorkspace(); }, []);
+
+  const refreshAll = async () => {
+    await loadWorkspace();
+    setRefreshToken((value) => value + 1);
+    showToast("Workspace refreshed");
   };
 
-  const loadImports = async () => {
-    try {
-      const payload = await api.getImports({ limit: 5 });
-      setImportRuns(normalizeListResponse(payload));
-    } catch (error) {
-      showToast("Could not load import history", error.message, "error");
-    }
-  };
-
-  const importAllProductionContent = async () => {
+  const importAll = async () => {
     setImporting(true);
     try {
-      const payload = await api.importAll({
-        profileHours: 24,
-        blogHours: 8760,
-        generateSummary: true,
-      });
-
-      const data = payload.data || {};
-      const imported =
-        (data.profiles?.run?.importedCount || 0) +
-        (data.books?.run?.importedCount || 0) +
-        (data.guidelines?.run?.importedCount || 0) +
-        (data.blogs?.run?.importedCount || 0);
-
-      await Promise.all([
-        loadSources({ page: 1 }),
-        loadPosts(),
-        loadImports(),
-      ]);
-
-      setDashboardRefreshToken((value) => value + 1);
-
-      showToast(
-        "Production import completed",
-        `${imported} new record(s) imported across all content types.`
-      );
+      await api.importAll({ profileHours: 24, blogHours: 8760, generateSummary: true });
+      await refreshAll();
+      showToast("Production import completed", "New read-only content is ready for review.");
     } catch (error) {
       showToast("Production import failed", error.message, "error");
     } finally {
       setImporting(false);
-    }
-  };
-
-  useEffect(() => {
-    loadSources();
-    loadPosts();
-    loadImports();
-  }, []);
-
-  const stats = useMemo(() => ({
-    totalSources: sourcePagination.total || sources.length,
-    newSources: sources.filter((item) => item.status === "NEW").length,
-    drafts: posts.filter((item) => item.status === "DRAFT").length,
-    approvals: posts.filter((item) => item.status === "PENDING_APPROVAL").length,
-    approved: posts.filter((item) => item.status === "APPROVED").length,
-  }), [sources, posts, sourcePagination.total]);
-
-  const refreshAll = async () => {
-    await Promise.all([loadSources(), loadPosts(), loadImports()]);
-    setDashboardRefreshToken((value) => value + 1);
-    showToast("Dashboard refreshed");
-  };
-
-  const openSource = async (id) => {
-    try {
-      const payload = await api.getSource(id);
-      setSelectedSource(payload.data || payload);
-    } catch (error) {
-      showToast("Could not open source", error.message, "error");
     }
   };
 
@@ -210,351 +170,304 @@ export default function App() {
     }
   };
 
-  const submitSourceFilters = (event) => {
+  const saveManualPost = async (event) => {
     event.preventDefault();
-    const updated = { ...sourceFilters, page: 1 };
-    setSourceFilters(updated);
-    loadSources(updated);
-  };
-
-  const changeSourcePage = (page) => {
-    if (page < 1 || page > sourcePagination.totalPages) return;
-    const updated = { ...sourceFilters, page };
-    setSourceFilters(updated);
-    loadSources(updated);
-  };
-
-  const generatePost = async (source) => {
-    setBusy(true);
     try {
-      await api.generatePostFromSource(source.id);
-      setSelectedSource(null);
-      await Promise.all([loadSources(), loadPosts()]);
-      showToast("Draft generated", `A draft post was created from source #${source.id}.`);
+      await api.createPost(manualForm);
+      setManualOpen(false);
+      setManualForm({ title: "", content: "" });
+      await loadWorkspace();
+      showToast("Draft created", "The post is waiting in manual approval.");
     } catch (error) {
-      showToast("Could not generate draft", error.message, "error");
-    } finally {
-      setBusy(false);
-      setAction(null);
-    }
-  };
-
-  const updateSourceStatus = async (source, status) => {
-    setBusy(true);
-    try {
-      await api.updateSourceStatus(source.id, status);
-      setSelectedSource(null);
-      await loadSources();
-      showToast("Source updated", `Source moved to ${status}.`);
-    } catch (error) {
-      showToast("Could not update source", error.message, "error");
-    } finally {
-      setBusy(false);
-      setAction(null);
-    }
-  };
-
-  const startEditPost = (post) => {
-    setEditingPost(post);
-    setPostForm({ title: post.title || "", content: post.content || "" });
-    setSelectedPost(null);
-  };
-
-  const savePost = async (event) => {
-    event.preventDefault();
-    setBusy(true);
-    try {
-      if (editingPost) {
-        await api.updatePost(editingPost.id, postForm);
-        showToast("Post updated");
-      } else {
-        await api.createPost(postForm);
-        showToast("Draft created");
-      }
-      setEditingPost(null);
-      setNewPostOpen(false);
-      setPostForm({ title: "", content: "" });
-      await loadPosts();
-    } catch (error) {
-      showToast("Could not save post", error.message, "error");
-    } finally {
-      setBusy(false);
+      showToast("Could not create draft", error.message, "error");
     }
   };
 
   const updatePostStatus = async (post, status) => {
-    setBusy(true);
     try {
       await api.updatePostStatus(post.id, status);
-      setSelectedPost(null);
-      await loadPosts();
-      showToast("Post status updated", `Post moved to ${status}.`);
-    } catch (error) {
-      showToast("Could not update post", error.message, "error");
-    } finally {
-      setBusy(false);
-      setAction(null);
-    }
-  };
-
-  const publishToTelegram = async (post) => {
-    setBusy(true);
-    try {
-      const payload = await api.publishPostToTelegram(post.id);
-      const publication = payload.data;
       const refreshed = await api.getPost(post.id);
       setSelectedPost(refreshed.data || refreshed);
-      await loadPosts();
-      showToast(
-        "Published to Telegram",
-        `Telegram message #${publication.externalMessageId} was published successfully.`
-      );
+      await loadWorkspace();
+      showToast("Workflow updated", `Post moved to ${status}.`);
     } catch (error) {
-      showToast("Telegram publishing failed", error.message, "error");
-    } finally {
-      setBusy(false);
-      setAction(null);
+      showToast("Could not update workflow", error.message, "error");
     }
   };
 
-  const navigation = [
-    { id: "dashboard", label: "Dashboard", icon: Gauge },
-    { id: "queue", label: "Content Queue", icon: Layers3 },
-    { id: "sources", label: "Content Sources", icon: Sparkles },
-    { id: "posts", label: "Posts & Approval", icon: FileText },
-    { id: "prompts", label: "Prompt Settings", icon: Settings },
-  ];
+  const startStudio = async (item) => {
+    if (["QURAN", "HADITH", "DUA"].includes(item.id)) {
+      setStudioBusy(item.id);
+      try {
+        const payload = await api.generateKnowledgePost(item.id);
+        const result = payload.data || payload;
+        await loadWorkspace();
+        showToast(
+          `${item.title} draft generated`,
+          "Created from approved knowledge with its stored reference."
+        );
+        if (result?.post?.id) await openPost(result.post.id);
+      } catch (error) {
+        showToast(
+          `Could not generate ${item.title} post`,
+          error.message,
+          "error"
+        );
+      } finally {
+        setStudioBusy("");
+      }
+      return;
+    }
 
-  return (
-    <div className="app-shell">
-      <aside className={`sidebar ${sidebarOpen ? "sidebar-open" : ""}`}>
-        <div className="brand">
-          <div className="brand-mark">IN</div>
-          <div><strong>IndiaNikah</strong><span>AI Content Hub</span></div>
-        </div>
-        <nav>
-          {navigation.map(({ id, label, icon: Icon }) => (
-            <button
-              key={id}
-              className={activeView === id ? "nav-item active" : "nav-item"}
-              onClick={() => { setActiveView(id); setSidebarOpen(false); }}
-            >
-              <Icon size={19} /> {label}
-            </button>
-          ))}
-        </nav>
-        <div className="sidebar-note">
-          <strong>Manual approval first</strong>
-          <span>Nothing is published without review.</span>
-        </div>
-      </aside>
+    if (item.id === "PROFILE") {
+      setStudioBusy(item.id);
+      try {
+        const payload = await api.generateProfileSummary();
+        const result = payload.data || payload;
+        await loadWorkspace();
+        showToast(
+          result.repairedCorruptedExisting
+            ? "Profile summary repaired"
+            : result.reusedExistingPost
+            ? "Today's profile summary opened"
+            : "Profile summary generated",
+          result.repairedCorruptedExisting
+            ? "Corrupted characters were removed from today's draft."
+            : result.reusedExistingPost
+            ? "The existing privacy-safe draft was preserved."
+            : "A privacy-safe aggregate draft is ready for review."
+        );
+        if (result?.post?.id) await openPost(result.post.id);
+      } catch (error) {
+        showToast(
+          "Could not prepare profile summary",
+          error.message,
+          "error"
+        );
+      } finally {
+        setStudioBusy("");
+      }
+      return;
+    }
 
-      <main className="main-content">
-        <header className="topbar">
-          <button className="mobile-menu" onClick={() => setSidebarOpen((value) => !value)}><Menu size={22} /></button>
-          <div>
-            <p className="eyebrow">Admin workspace</p>
-            <h1>{navigation.find((item) => item.id === activeView)?.label}</h1>
+    if (item.automation) {
+      setStudioBusy(item.id);
+      try {
+        const payload = await api.createRandomDraft({ type: item.automation, platform: "ALL" });
+        const result = payload.data;
+        await loadWorkspace();
+        showToast(result?.generated ? "AI draft generated" : "Existing draft selected", result?.selectedSource?.title || item.title);
+        if (result?.post?.id) await openPost(result.post.id);
+      } catch (error) {
+        showToast(`Could not prepare ${item.title}`, error.message, "error");
+      } finally {
+        setStudioBusy("");
+      }
+      return;
+    }
+
+    if (item.id === "CUSTOM") {
+      setStudioBrief(item);
+      return;
+    }
+
+    setStudioBusy(item.id);
+    try {
+      const payload = await api.buildKnowledgeContext({
+        packKey: item.pack,
+        query: `${item.title} social media content for IndiaNikah`,
+        maxItems: 8,
+        maxCharacters: 12000
+      });
+      setContextPreview({ item, data: payload.data || payload });
+    } catch (error) {
+      showToast(`Could not build ${item.title} context`, error.message, "error");
+    } finally {
+      setStudioBusy("");
+    }
+  };
+
+  const createStudioDraft = async (event) => {
+    event.preventDefault();
+    const form = new FormData(event.currentTarget);
+    try {
+      await api.createPost({
+        title: form.get("title"),
+        content: form.get("content")
+      });
+      setStudioBrief(null);
+      await loadWorkspace();
+      showToast("Studio draft created", "Review it under Posts & Approval.");
+    } catch (error) {
+      showToast("Could not create studio draft", error.message, "error");
+    }
+  };
+
+  const title = allNavigation.find((item) => item.id === activeView)?.label || "Workspace";
+  const postStats = useMemo(() => ({
+    drafts: posts.filter((post) => post.status === "DRAFT").length,
+    pending: posts.filter((post) => post.status === "PENDING_APPROVAL").length,
+    approved: posts.filter((post) => post.status === "APPROVED").length,
+  }), [posts]);
+
+  return <div className={`workspace-shell ${compactSidebar ? "sidebar-compact" : ""}`}>
+    <aside className={`workspace-sidebar ${mobileOpen ? "mobile-open" : ""}`}>
+      <div className="workspace-brand">
+        <div className="workspace-logo">IN</div>
+        <div><strong>IndiaNikah</strong><span>AI Content Hub</span></div>
+        <button className="sidebar-close" onClick={() => setMobileOpen(false)}><X size={20}/></button>
+      </div>
+
+      <nav className="workspace-nav">
+        {NAV_GROUPS.map((group) => <div className="nav-group" key={group.label}>
+          <p>{group.label}</p>
+          {group.items.map(({ id, label, icon: Icon }) => <button
+            key={id}
+            title={label}
+            className={activeView === id ? "workspace-nav-item active" : "workspace-nav-item"}
+            onClick={() => { setActiveView(id); setMobileOpen(false); }}
+          ><Icon size={18}/><span>{label}</span></button>)}
+        </div>)}
+      </nav>
+
+      <div className="approval-policy">
+        <ShieldCheck size={20}/>
+        <div><strong>Manual approval first</strong><span>No content publishes without review.</span></div>
+      </div>
+    </aside>
+
+    <main className="workspace-main">
+      <header className="workspace-topbar">
+        <div className="topbar-title">
+          <button className="mobile-trigger" onClick={() => setMobileOpen(true)}><Menu size={21}/></button>
+          <button className="compact-trigger" onClick={() => setCompactSidebar((value) => !value)}>
+            {compactSidebar ? <PanelLeftOpen size={19}/> : <PanelLeftClose size={19}/>}
+          </button>
+          <div><p>Admin workspace</p><h1>{title}</h1></div>
+        </div>
+        <div className="topbar-actions">
+          <button className="button button-secondary" onClick={refreshAll} disabled={loading}><RefreshCw size={16} className={loading ? "spin" : ""}/> Refresh</button>
+          <button className="button button-primary" onClick={importAll} disabled={importing}><Database size={16}/> {importing ? "Importing..." : "Import all"}</button>
+        </div>
+      </header>
+
+      <div className="workspace-content">
+        {activeView === "dashboard" && <div className="workspace-page">
+          <section className="hero-banner">
+            <div><p className="eyebrow">Content intelligence</p><h2>One workspace for knowledge, generation, approval and publishing.</h2><p>IndiaNikah context is now connected to the editorial workflow. Manual approval remains the default.</p></div>
+            <button className="hero-action" onClick={() => setActiveView("studio")}><Sparkles size={19}/> Open AI Studio</button>
+          </section>
+          <AdminOverview showToast={showToast} refreshToken={refreshToken} onOpenPost={async (id) => { await openPost(id); setActiveView("posts"); }}/>
+          <div className="quick-grid">
+            {STUDIO_TYPES.slice(0,4).map(({ id, title, description, icon: Icon }) => <button key={id} className="quick-card" onClick={() => setActiveView("studio")}><span><Icon size={20}/></span><div><strong>{title}</strong><p>{description}</p></div></button>)}
           </div>
-          <button className="button button-primary" onClick={importAllProductionContent} disabled={importing}><Database size={17} /> {importing ? "Importing..." : "Import all"}</button>
-          <button className="button button-secondary" onClick={refreshAll}><RefreshCw size={17} /> Refresh</button>
-        </header>
-
-        {activeView === "dashboard" && (
-          <section className="page-section">
-            <AdminOverview
-              showToast={showToast}
-              refreshToken={dashboardRefreshToken}
-              onOpenPost={async (postId) => {
-                await openPost(postId);
-                setActiveView("posts");
-              }}
-            />
-
-            <RandomDraftPanel
-              showToast={showToast}
-              onRefresh={async () => {
-                await Promise.all([loadSources(), loadPosts()]);
-              }}
-              onDraftReady={async (postId) => {
-                await openPost(postId);
-                setActiveView("posts");
-              }}
-            />
-
-            <ContentQueuePanel
-              showToast={showToast}
-              onReviewPost={async (postId) => {
-                await openPost(postId);
-                setActiveView("posts");
-              }}
-            />
-
-            <section className="panel import-panel">
-              <div className="panel-heading">
-                <div><p className="eyebrow">Production importer</p><h2>Read-only MySQL profile import</h2></div>
-                <button className="button button-primary" onClick={importAllProductionContent} disabled={importing}><Database size={17} /> {importing ? "Importing..." : "Import all missing"}</button>
-              </div>
-              {importRuns.length ? (
-                <div className="import-runs">
-                  {importRuns.map((run) => (
-                    <div className="import-run" key={run.id}>
-                      <div><strong>{run.status}</strong><span>{formatDate(run.startedAt)}</span></div>
-                      <span>Fetched {run.fetchedCount} · Imported {run.importedCount} · Skipped {run.skippedCount}</span>
-                    </div>
-                  ))}
-                </div>
-              ) : <EmptyState title="No production imports yet" message="Use Import now to read safe public profile fields from the production database." />}
+          <div className="two-column">
+            <section className="workspace-panel">
+              <div className="panel-title"><div><p className="eyebrow">Recent posts</p><h3>Approval activity</h3></div><button onClick={() => setActiveView("posts")}>View all</button></div>
+              {posts.length ? posts.slice(0,6).map((post) => <button className="record-row" key={post.id} onClick={() => openPost(post.id)}><div><strong>{post.title}</strong><span>{formatDate(post.updatedAt)}</span></div><StatusBadge status={post.status}/></button>) : <EmptyState title="No posts yet" message="Use AI Studio or create a manual draft."/>}
             </section>
-
-            <div className="dashboard-grid">
-              <section className="panel">
-                <div className="panel-heading"><div><p className="eyebrow">Recent activity</p><h2>Latest content sources</h2></div><button className="text-button" onClick={() => setActiveView("sources")}>View all</button></div>
-                {sources.length ? sources.slice(0, 5).map((source) => (
-                  <button className="activity-row" key={source.id} onClick={() => openSource(source.id)}>
-                    <div><strong>{source.title || `${source.type} source #${source.id}`}</strong><span>{source.type} · {formatDate(source.createdAt)}</span></div>
-                    <StatusBadge status={source.status} />
-                  </button>
-                )) : <EmptyState title="No sources yet" message="Create or import a source to begin." />}
-              </section>
-
-              <section className="panel">
-                <div className="panel-heading"><div><p className="eyebrow">Approval queue</p><h2>Posts needing attention</h2></div><button className="text-button" onClick={() => setActiveView("posts")}>Open queue</button></div>
-                {posts.filter((post) => post.status !== "APPROVED").length ? posts.filter((post) => post.status !== "APPROVED").slice(0, 5).map((post) => (
-                  <button className="activity-row" key={post.id} onClick={() => openPost(post.id)}>
-                    <div><strong>{post.title}</strong><span>Post #{post.id} · {formatDate(post.updatedAt)}</span></div>
-                    <StatusBadge status={post.status} />
-                  </button>
-                )) : <EmptyState title="Queue is clear" message="No drafts or pending approvals right now." />}
-              </section>
-            </div>
-          </section>
-        )}
-
-        {activeView === "queue" && (
-          <section className="page-section">
-            <ContentQueuePanel
-              showToast={showToast}
-              refreshToken={dashboardRefreshToken}
-              onReviewPost={async (postId) => {
-                await openPost(postId);
-                setActiveView("posts");
-              }}
-            />
-          </section>
-        )}
-
-        {activeView === "prompts" && (
-          <section className="page-section">
-            <PromptSettings showToast={showToast} />
-          </section>
-        )}
-
-        {activeView === "sources" && (
-          <section className="page-section">
-            <form className="filter-bar" onSubmit={submitSourceFilters}>
-              <label className="search-field"><Search size={18} /><input value={sourceFilters.search} onChange={(event) => setSourceFilters({ ...sourceFilters, search: event.target.value })} placeholder="Search title, content or external ID" /></label>
-              <select value={sourceFilters.type} onChange={(event) => setSourceFilters({ ...sourceFilters, type: event.target.value })}>{SOURCE_TYPES.map((value) => <option key={value || "all"} value={value}>{value || "All types"}</option>)}</select>
-              <select value={sourceFilters.status} onChange={(event) => setSourceFilters({ ...sourceFilters, status: event.target.value })}>{SOURCE_STATUSES.map((value) => <option key={value || "all"} value={value}>{value || "All statuses"}</option>)}</select>
-              <button className="button button-primary" type="submit">Apply filters</button>
-            </form>
-
-            <section className="panel table-panel">
-              <div className="panel-heading"><div><p className="eyebrow">Source inbox</p><h2>{sourcePagination.total} content sources</h2></div></div>
-              {loadingSources ? <div className="loading-state"><RefreshCw className="spin" /> Loading sources...</div> : sources.length ? (
-                <div className="table-wrap"><table><thead><tr><th>Source</th><th>Type</th><th>Status</th><th>Linked post</th><th>Created</th><th></th></tr></thead><tbody>
-                  {sources.map((source) => <tr key={source.id}><td><strong>{source.title || `Untitled source #${source.id}`}</strong><span className="table-subtext">{source.externalId || `ID ${source.id}`}</span></td><td>{source.type}</td><td><StatusBadge status={source.status} /></td><td>{source.post ? `Post #${source.post.id}` : "—"}</td><td>{formatDate(source.createdAt)}</td><td><button className="text-button" onClick={() => openSource(source.id)}>Open</button></td></tr>)}
-                </tbody></table></div>
-              ) : <EmptyState title="No matching sources" message="Adjust the filters or import new content." />}
-              <div className="pagination"><span>Page {sourcePagination.page} of {sourcePagination.totalPages}</span><div><button className="icon-button" onClick={() => changeSourcePage(sourcePagination.page - 1)} disabled={sourcePagination.page <= 1}><ChevronLeft size={18} /></button><button className="icon-button" onClick={() => changeSourcePage(sourcePagination.page + 1)} disabled={sourcePagination.page >= sourcePagination.totalPages}><ChevronRight size={18} /></button></div></div>
+            <section className="workspace-panel">
+              <div className="panel-title"><div><p className="eyebrow">Imports</p><h3>Production activity</h3></div><button onClick={importAll}>Run import</button></div>
+              {imports.length ? imports.slice(0,6).map((run) => <div className="record-row static" key={run.id}><div><strong>{run.importType || "Import"}</strong><span>{formatDate(run.startedAt)}</span></div><span className="run-count">{run.importedCount || 0} imported</span></div>) : <EmptyState title="No import history" message="Run a safe read-only import."/>}
             </section>
+          </div>
+        </div>}
+
+        {activeView === "studio" && <div className="workspace-page">
+          <PageHeading eyebrow="AI content studio" title="Choose what you want to create" description="Each workflow uses approved IndiaNikah knowledge, brand context and manual review." actions={<button className="button button-secondary" onClick={() => setManualOpen(true)}><Plus size={16}/> Manual post</button>}/>
+          <div className="studio-grid">
+            {STUDIO_TYPES.map((item) => {
+              const Icon = item.icon;
+              return <article className="studio-card" key={item.id}>
+                <div className="studio-icon"><Icon size={24}/></div>
+                <div className="studio-card-copy"><h3>{item.title}</h3><p>{item.description}</p></div>
+                <div className="studio-card-footer"><span>{item.pack ? `Pack: ${item.pack}` : item.automation ? "Automatic source selection" : "Your own brief"}</span><button onClick={() => startStudio(item)} disabled={studioBusy === item.id}>{studioBusy === item.id ? "Preparing..." : "Create"}</button></div>
+              </article>;
+            })}
+          </div>
+        </div>}
+
+        {activeView === "queue" && <div className="workspace-page"><PageHeading eyebrow="Editorial workflow" title="Content Queue" description="Prepare items in advance, approve them and publish only when ready."/><ContentQueuePanel showToast={showToast} refreshToken={refreshToken} onReviewPost={async (id) => { await openPost(id); setActiveView("posts"); }}/></div>}
+
+        {activeView === "posts" && <div className="workspace-page">
+          <PageHeading eyebrow="Manual approval" title="Posts & Approval" description="Review generated and manual drafts before anything reaches social media." actions={<button className="button button-primary" onClick={() => setManualOpen(true)}><Plus size={16}/> New draft</button>}/>
+          <div className="workflow-summary">
+            <button onClick={() => { setPostFilter("DRAFT"); api.getPosts({status:"DRAFT"}).then((p)=>setPosts(normalize(p))); }}><span>Drafts</span><strong>{postStats.drafts}</strong></button>
+            <button onClick={() => { setPostFilter("PENDING_APPROVAL"); api.getPosts({status:"PENDING_APPROVAL"}).then((p)=>setPosts(normalize(p))); }}><span>Pending approval</span><strong>{postStats.pending}</strong></button>
+            <button onClick={() => { setPostFilter("APPROVED"); api.getPosts({status:"APPROVED"}).then((p)=>setPosts(normalize(p))); }}><span>Approved</span><strong>{postStats.approved}</strong></button>
+          </div>
+          <section className="workspace-panel">
+            <div className="panel-title"><div><p className="eyebrow">Post records</p><h3>{posts.length} items</h3></div><button onClick={() => { setPostFilter(""); loadWorkspace(); }}>Clear filter</button></div>
+            {posts.length ? <div className="responsive-table"><table><thead><tr><th>Post</th><th>Status</th><th>Source</th><th>Updated</th><th></th></tr></thead><tbody>{posts.map((post)=><tr key={post.id}><td><strong>{post.title}</strong><span>{(post.content || "").slice(0,100)}{post.content?.length>100?"…":""}</span></td><td><StatusBadge status={post.status}/></td><td>{post.sourceId ? `#${post.sourceId}` : "Manual"}</td><td>{formatDate(post.updatedAt)}</td><td><button onClick={() => openPost(post.id)}>Review</button></td></tr>)}</tbody></table></div> : <EmptyState title="No posts found" message="Create a draft from AI Studio."/>}
           </section>
-        )}
+        </div>}
 
-        {activeView === "posts" && (
-          <section className="page-section">
-            <div className="filter-bar post-filter-bar">
-              <select value={postStatus} onChange={(event) => { const status = event.target.value; setPostStatus(status); loadPosts(status); }}>{POST_STATUSES.map((value) => <option key={value || "all"} value={value}>{value || "All post statuses"}</option>)}</select>
-              <button className="button button-primary" onClick={() => { setNewPostOpen(true); setPostForm({ title: "", content: "" }); }}><Plus size={17} /> New manual post</button>
-            </div>
+        {activeView === "sources" && <div className="workspace-page">
+          <PageHeading eyebrow="Source inbox" title="Content Sources" description="Imported profiles, books, blogs, guidelines and other raw material." actions={<div className="inline-search"><Search size={16}/><input value={sourceSearch} onChange={(e)=>setSourceSearch(e.target.value)} placeholder="Search sources"/><button onClick={loadWorkspace}>Search</button></div>}/>
+          <section className="workspace-panel">{sources.length ? <div className="responsive-table"><table><thead><tr><th>Source</th><th>Type</th><th>Status</th><th>Created</th></tr></thead><tbody>{sources.map((source)=><tr key={source.id}><td><strong>{source.title || `Source #${source.id}`}</strong><span>{source.externalId || ""}</span></td><td>{source.type}</td><td><StatusBadge status={source.status}/></td><td>{formatDate(source.createdAt)}</td></tr>)}</tbody></table></div> : <EmptyState title="No sources found" message="Run an import or adjust your search."/>}</section>
+        </div>}
 
-            <section className="panel table-panel">
-              <div className="panel-heading"><div><p className="eyebrow">Content workflow</p><h2>{posts.length} posts</h2></div></div>
-              {loadingPosts ? <div className="loading-state"><RefreshCw className="spin" /> Loading posts...</div> : posts.length ? (
-                <div className="table-wrap"><table><thead><tr><th>Post</th><th>Status</th><th>Source</th><th>Updated</th><th></th></tr></thead><tbody>
-                  {posts.map((post) => <tr key={post.id}><td><strong>{post.title}</strong><span className="table-subtext">{(post.content || "").slice(0, 90)}{post.content?.length > 90 ? "…" : ""}</span></td><td><StatusBadge status={post.status} /></td><td>{post.sourceId ? `Source #${post.sourceId}` : "Manual"}</td><td>{formatDate(post.updatedAt)}</td><td><button className="text-button" onClick={() => openPost(post.id)}>Review</button></td></tr>)}
-                </tbody></table></div>
-              ) : <EmptyState title="No posts found" message="Generate a post from a source or create one manually." />}
-            </section>
-          </section>
-        )}
-      </main>
+        {activeView === "knowledge" && <div className="workspace-page"><PageHeading eyebrow="Domain context" title="Knowledge Library" description="Manage approved Quran, Hadith, dua, marriage guidance, brand and editorial knowledge."/><KnowledgeLibraryPanel showToast={showToast}/></div>}
+        {activeView === "packs" && <div className="workspace-page"><PageHeading eyebrow="Context assembly" title="Knowledge Packs" description="Reusable bundles determine which approved knowledge is supplied to each content workflow."/><KnowledgeLibraryPanel showToast={showToast}/></div>}
+        {activeView === "prompts" && <div className="workspace-page"><PageHeading eyebrow="AI instructions" title="Prompt Settings" description="Control permanent brand context and content-type instructions without editing code."/><PromptSettings showToast={showToast}/></div>}
 
-      {selectedSource && (
-        <Modal title={`Source #${selectedSource.id}`} onClose={() => setSelectedSource(null)} footer={
-          <>
-            {selectedSource.status === "NEW" && !selectedSource.post ? <button className="button button-primary" onClick={() => setAction({ type: "generate", source: selectedSource })}><Sparkles size={17} /> Generate draft</button> : null}
-            {selectedSource.status !== "REJECTED" && selectedSource.status !== "ARCHIVED" ? <button className="button button-danger" onClick={() => setAction({ type: "sourceStatus", source: selectedSource, status: "REJECTED" })}><XCircle size={17} /> Reject</button> : null}
-            {selectedSource.status === "PROCESSED" || selectedSource.status === "REJECTED" ? <button className="button button-secondary" onClick={() => setAction({ type: "sourceStatus", source: selectedSource, status: "ARCHIVED" })}><Archive size={17} /> Archive</button> : null}
-          </>
-        }>
-          <div className="detail-grid"><div><span>Type</span><strong>{selectedSource.type}</strong></div><div><span>Status</span><StatusBadge status={selectedSource.status} /></div><div><span>External ID</span><strong>{selectedSource.externalId || "—"}</strong></div><div><span>Created</span><strong>{formatDate(selectedSource.createdAt)}</strong></div></div>
-          <h3>{selectedSource.title || "Untitled source"}</h3>
-          <div className="content-preview">{selectedSource.rawContent || "No raw content provided."}</div>
-          {selectedSource.sourceUrl ? <a className="source-link" href={selectedSource.sourceUrl} target="_blank" rel="noreferrer">Open original source</a> : null}
-          {selectedSource.metadata ? <><h4>Metadata</h4><pre>{JSON.stringify(selectedSource.metadata, null, 2)}</pre></> : null}
-          {selectedSource.post ? <div className="linked-card"><span>Linked post</span><strong>#{selectedSource.post.id} · {selectedSource.post.title}</strong><StatusBadge status={selectedSource.post.status} /></div> : null}
-        </Modal>
-      )}
+        {activeView === "publishing" && <div className="workspace-page">
+          <PageHeading eyebrow="Multi-platform delivery" title="Publishing" description="Publish only approved content and review campaign-level outcomes."/>
+          <div className="platform-grid">
+            {["Telegram","Facebook Page","LinkedIn","Instagram"].map((name, index)=><article className="platform-card" key={name}><span className={`platform-status ${index<3?"online":"planned"}`}></span><div><strong>{name}</strong><p>{index<3?"Configured publishing workflow":"Integration deferred until API setup is complete"}</p></div><span>{index<3?"Ready":"Planned"}</span></article>)}
+          </div>
+          <section className="workspace-panel"><div className="panel-title"><div><p className="eyebrow">Approved content</p><h3>Ready to publish</h3></div><button onClick={() => setActiveView("posts")}>Open approvals</button></div>{posts.filter((p)=>p.status==="APPROVED").length ? posts.filter((p)=>p.status==="APPROVED").map((post)=><button className="record-row" key={post.id} onClick={()=>openPost(post.id)}><div><strong>{post.title}</strong><span>Approved · {formatDate(post.updatedAt)}</span></div><Send size={17}/></button>) : <EmptyState title="Nothing approved" message="Approve a post before publishing."/>}</section>
+        </div>}
 
-      {selectedPost && (
-        <Modal title={`Review post #${selectedPost.id}`} onClose={() => setSelectedPost(null)} footer={
-          <>
-            {selectedPost.status !== "APPROVED" ? <button className="button button-secondary" onClick={() => startEditPost(selectedPost)}><PenLine size={17} /> Edit</button> : null}
-            {selectedPost.status === "DRAFT" ? <button className="button button-primary" onClick={() => setAction({ type: "postStatus", post: selectedPost, status: "PENDING_APPROVAL" })}>Submit for approval</button> : null}
-            {selectedPost.status === "PENDING_APPROVAL" ? <button className="button button-primary" onClick={() => setAction({ type: "postStatus", post: selectedPost, status: "APPROVED" })}><CheckCircle2 size={17} /> Approve</button> : null}
-            {selectedPost.status !== "DRAFT" ? <button className="button button-secondary" onClick={() => setAction({ type: "postStatus", post: selectedPost, status: "DRAFT" })}>Return to draft</button> : null}
-          </>
-        }>
-          <div className="detail-grid"><div><span>Status</span><StatusBadge status={selectedPost.status} /></div><div><span>Source</span><strong>{selectedPost.sourceId ? `#${selectedPost.sourceId}` : "Manual"}</strong></div><div><span>Created</span><strong>{formatDate(selectedPost.createdAt)}</strong></div><div><span>Updated</span><strong>{formatDate(selectedPost.updatedAt)}</strong></div></div>
-          <h3>{selectedPost.title}</h3>
-          <div className="content-preview post-preview">{selectedPost.content}</div>
-          <PublishEverywhere
-            post={selectedPost}
-            showToast={showToast}
-            onPublished={async () => {
-              const refreshed = await api.getPost(selectedPost.id);
-              setSelectedPost(refreshed.data || refreshed);
-              await loadPosts();
-              setDashboardRefreshToken((value) => value + 1);
-            }}
-          />
-          {selectedPost.publications?.length ? <>
-            <h4>Publication history</h4>
-            {selectedPost.publications.map((publication) => (
-              <div className="linked-card" key={publication.id}>
-                <span>{publication.platform}</span>
-                <strong>{publication.status}{publication.externalMessageId ? ` · Message #${publication.externalMessageId}` : ""}</strong>
-                <span>{publication.publishedAt ? formatDate(publication.publishedAt) : publication.errorMessage || "Not published yet"}</span>
-              </div>
-            ))}
-          </> : null}
-        </Modal>
-      )}
+        {activeView === "automation" && <div className="workspace-page">
+          <PageHeading eyebrow="Controlled automation" title="Automation" description="Schedulers remain approval-first while the platform is being stabilised."/>
+          <div className="automation-grid">
+            {[["Profile import","Daily read-only production profile import",true],["Content queue","Prepare scheduled content for review",false],["Auto approval","Automatically approve generated content",false],["Auto publishing","Publish without manual action",false]].map(([name,desc,enabled])=><article className="automation-card" key={name}><div><CalendarClock size={21}/><div><strong>{name}</strong><p>{desc}</p></div></div><span className={enabled?"automation-state active":"automation-state"}>{enabled?"Configured":"Disabled"}</span></article>)}
+          </div>
+          <section className="notice-panel"><ShieldCheck size={22}/><div><strong>Current operating mode: MANUAL_APPROVAL</strong><p>Generated content enters the queue and must be reviewed before publishing. Full automation can be enabled later after stable testing.</p></div></section>
+        </div>}
 
-      {(editingPost || newPostOpen) && (
-        <Modal title={editingPost ? `Edit post #${editingPost.id}` : "Create manual post"} onClose={() => { setEditingPost(null); setNewPostOpen(false); }} footer={
-          <><button className="button button-secondary" onClick={() => { setEditingPost(null); setNewPostOpen(false); }}>Cancel</button><button className="button button-primary" form="post-form" type="submit" disabled={busy}>{busy ? "Saving..." : "Save draft"}</button></>
-        }>
-          <form id="post-form" className="form-stack" onSubmit={savePost}><label>Title<input required maxLength={255} value={postForm.title} onChange={(event) => setPostForm({ ...postForm, title: event.target.value })} /></label><label>Content<textarea required rows={12} value={postForm.content} onChange={(event) => setPostForm({ ...postForm, content: event.target.value })} /></label></form>
-        </Modal>
-      )}
+        {activeView === "analytics" && <div className="workspace-page">
+          <PageHeading eyebrow="Performance" title="Analytics" description="Operational metrics are available now; social engagement analytics will expand as platform APIs are connected."/>
+          <div className="analytics-grid">
+            {[["Total sources",sources.length,Database],["Draft posts",postStats.drafts,FileText],["Pending approval",postStats.pending,Activity],["Approved",postStats.approved,CheckCircle2]].map(([label,value,Icon])=><article className="analytics-card" key={label}><Icon size={21}/><span>{label}</span><strong>{value}</strong></article>)}
+          </div>
+          <section className="workspace-panel"><div className="panel-title"><div><p className="eyebrow">Coming next</p><h3>Engagement intelligence</h3></div></div><div className="feature-list"><span>Platform reach and engagement</span><span>Approval and rejection rates</span><span>Best-performing knowledge packs</span><span>Prompt version comparison</span></div></section>
+        </div>}
 
-      {action?.type === "generate" && <ConfirmDialog title="Generate draft post?" message="This source will be marked as PROCESSED and linked to a new DRAFT post." confirmLabel="Generate draft" onClose={() => setAction(null)} onConfirm={() => generatePost(action.source)} busy={busy} />}
-      {action?.type === "sourceStatus" && <ConfirmDialog title={`Move source to ${action.status}?`} message="The source status will be updated immediately." confirmLabel={`Move to ${action.status}`} danger={action.status === "REJECTED"} onClose={() => setAction(null)} onConfirm={() => updateSourceStatus(action.source, action.status)} busy={busy} />}
-      {action?.type === "postStatus" && <ConfirmDialog title={`Move post to ${action.status}?`} message="The post workflow status will be updated immediately." confirmLabel={`Move to ${action.status}`} onClose={() => setAction(null)} onConfirm={() => updatePostStatus(action.post, action.status)} busy={busy} />}
+        {activeView === "settings" && <div className="workspace-page">
+          <PageHeading eyebrow="Configuration" title="Settings" description="Environment secrets stay in the backend. This workspace exposes safe operational preferences only."/>
+          <div className="settings-grid">
+            <section className="workspace-panel"><h3>Editorial policy</h3><label className="setting-row"><div><strong>Manual approval required</strong><span>Prevent automatic publishing.</span></div><input type="checkbox" checked readOnly/></label><label className="setting-row"><div><strong>Email publishing reports</strong><span>Send a Microsoft email after each campaign.</span></div><input type="checkbox" checked readOnly/></label></section>
+            <section className="workspace-panel"><h3>Brand identity</h3><div className="readonly-field"><span>Product</span><strong>IndiaNikah AI Content Hub</strong></div><div className="readonly-field"><span>Promise</span><strong>100% free forever</strong></div><div className="readonly-field"><span>Operating principle</span><strong>Privacy-first, trust-first</strong></div></section>
+          </div>
+        </div>}
+      </div>
+    </main>
 
-      <Toast toast={toast} onClose={() => setToast(null)} />
-    </div>
-  );
+    {selectedPost && <Modal title={`Review post #${selectedPost.id}`} onClose={()=>setSelectedPost(null)} footer={<>
+      {selectedPost.status === "DRAFT" && <button className="button button-primary" onClick={()=>updatePostStatus(selectedPost,"PENDING_APPROVAL")}>Submit for approval</button>}
+      {selectedPost.status === "PENDING_APPROVAL" && <button className="button button-primary" onClick={()=>updatePostStatus(selectedPost,"APPROVED")}><CheckCircle2 size={16}/> Approve</button>}
+      {selectedPost.status !== "DRAFT" && <button className="button button-secondary" onClick={()=>updatePostStatus(selectedPost,"DRAFT")}>Return to draft</button>}
+    </>}>
+      <div className="post-modal-meta"><StatusBadge status={selectedPost.status}/><span>{formatDate(selectedPost.updatedAt)}</span></div>
+      <h3>{selectedPost.title}</h3><div className="content-preview post-preview">{selectedPost.content}</div>
+      <PublishEverywhere post={selectedPost} showToast={showToast} onPublished={async()=>{ await openPost(selectedPost.id); await loadWorkspace(); }}/>
+    </Modal>}
+
+    {manualOpen && <Modal title="Create manual draft" onClose={()=>setManualOpen(false)} footer={<button className="button button-primary" form="manual-post-form" type="submit">Save draft</button>}>
+      <form id="manual-post-form" className="form-stack" onSubmit={saveManualPost}><label>Title<input required maxLength="255" value={manualForm.title} onChange={(e)=>setManualForm({...manualForm,title:e.target.value})}/></label><label>Content<textarea required rows="12" value={manualForm.content} onChange={(e)=>setManualForm({...manualForm,content:e.target.value})}/></label></form>
+    </Modal>}
+
+    {studioBrief && <Modal title="Custom AI content brief" onClose={()=>setStudioBrief(null)} footer={<button className="button button-primary" form="studio-brief-form" type="submit">Create draft</button>}>
+      <form id="studio-brief-form" className="form-stack" onSubmit={createStudioDraft}><label>Title<input name="title" required placeholder="Post title"/></label><label>Draft content<textarea name="content" required rows="12" placeholder="Write or paste the initial content. AI generation can be connected to this brief in the next backend milestone."/></label></form>
+    </Modal>}
+
+    {contextPreview && <Modal title={`${contextPreview.item.title} context preview`} onClose={()=>setContextPreview(null)} footer={<button className="button button-primary" onClick={()=>{setContextPreview(null);setManualOpen(true);}}>Use context in draft</button>}>
+      <div className="context-summary"><strong>{contextPreview.data?.selectedItems?.length || contextPreview.data?.items?.length || 0} approved items selected</strong><span>Pack: {contextPreview.item.pack}</span></div>
+      <pre className="context-preview">{contextPreview.data?.context || contextPreview.data?.compiledContext || JSON.stringify(contextPreview.data,null,2)}</pre>
+    </Modal>}
+
+    <Toast toast={toast} onClose={()=>setToast(null)}/>
+  </div>;
 }

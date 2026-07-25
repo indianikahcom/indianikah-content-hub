@@ -1,7 +1,15 @@
 ﻿const postVariantRepository = require("../repositories/postVariantRepository");
 const AppError = require("../errors/AppError");
 
-const PLATFORMS = ["FACEBOOK", "INSTAGRAM", "X", "LINKEDIN", "TELEGRAM", "WHATSAPP", "YOUTUBE"];
+const { postText: composeXText } = require("./publishers/xPublisher");
+
+const PLATFORMS = [
+    "FACEBOOK",
+    "INSTAGRAM",
+    "LINKEDIN",
+    "TELEGRAM",
+    "X",
+];
 
 function clean(value) {
     if (value === undefined || value === null) return "";
@@ -75,12 +83,11 @@ function composeInstagram(post, source) {
 }
 
 function composeX(post, source) {
-    const sourceUrl = clean(source?.sourceUrl);
-    const core = clean(post.title);
-    const suffix = sourceUrl ? `\n${sourceUrl}` : "";
     return {
         title: null,
-        content: truncate(`${core}${suffix} #IndiaNikah`, 280)
+        content: composeXText(
+            `${clean(post.title)}\n\n${sourceBody(post, source)}`
+        ),
     };
 }
 
@@ -102,29 +109,12 @@ function composeTelegram(post, source) {
     };
 }
 
-function composeWhatsApp(post, source) {
-    return {
-        title: null,
-        content: truncate(sourceBody(post, source), 2000)
-    };
-}
-
-function composeYouTube(post, source) {
-    const url = clean(source?.sourceUrl);
-    return {
-        title: truncate(post.title, 100),
-        content: truncate(`${sourceBody(post, source)}${url ? `\n\nSource video: ${url}` : ""}`, 5000)
-    };
-}
-
 const composers = {
     FACEBOOK: composeFacebook,
     INSTAGRAM: composeInstagram,
-    X: composeX,
     LINKEDIN: composeLinkedIn,
     TELEGRAM: composeTelegram,
-    WHATSAPP: composeWhatsApp,
-    YOUTUBE: composeYouTube
+    X: composeX,
 };
 
 async function composeForPost(postId) {
@@ -138,7 +128,6 @@ async function composeForPost(postId) {
 
     const variants = [];
     for (const platform of PLATFORMS) {
-        if (platform === "YOUTUBE" && post.source?.type !== "GUIDELINE") continue;
         const data = composers[platform](post, post.source);
         variants.push(await postVariantRepository.upsertVariant(post.id, platform, data));
     }

@@ -8,6 +8,9 @@ const AppError = require("../errors/AppError");
 const {
   sendPublishingReport,
 } = require("./microsoftEmailService");
+const {
+  buildFacebookPostUrl,
+} = require("./facebookPostUrl");
 
 function normalize(value) {
   if (
@@ -86,12 +89,21 @@ function buildLiveUrl(publication) {
       publication.responseData
   );
 
-  if (responseData.linkedinPostUrl) {
-    return responseData.linkedinPostUrl;
+  if (publication.platform === "FACEBOOK") {
+    const facebookUrl = buildFacebookPostUrl(
+        responseData.facebookPostId ||
+        publication.externalMessageId,
+        responseData.pageId ||
+        publication.destination
+    );
+
+    if (facebookUrl) {
+      return facebookUrl;
+    }
   }
 
-  if (responseData.facebookPostUrl) {
-    return responseData.facebookPostUrl;
+  if (responseData.linkedinPostUrl) {
+    return responseData.linkedinPostUrl;
   }
 
   if (responseData.telegramPostUrl) {
@@ -104,13 +116,6 @@ function buildLiveUrl(publication) {
       publication.externalMessageId
   ) {
     return `https://t.me/${responseData.channelUsername}/${publication.externalMessageId}`;
-  }
-
-  if (
-      publication.platform === "FACEBOOK" &&
-      responseData.facebookPostId
-  ) {
-    return `https://www.facebook.com/${responseData.facebookPostId}`;
   }
 
   return null;

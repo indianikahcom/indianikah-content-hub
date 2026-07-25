@@ -2,6 +2,13 @@ const MODES = Object.freeze({
     MANUAL_APPROVAL: "MANUAL_APPROVAL",
     FULL_AUTO: "FULL_AUTO",
 });
+const SUPPORTED_PUBLISH_PLATFORMS = new Set([
+    "TELEGRAM",
+    "FACEBOOK",
+    "LINKEDIN",
+    "INSTAGRAM",
+    "X",
+]);
 
 function booleanEnv(name, fallback = false) {
     const value = process.env[name];
@@ -91,12 +98,12 @@ function getAutomationConfig() {
             1,
             100
         ),
-        enabledPlatforms: csvEnv("ENABLED_PUBLISH_PLATFORMS", [
-            "TELEGRAM",
-            "FACEBOOK",
-            "LINKEDIN",
-            "INSTAGRAM",
-        ]),
+        enabledPlatforms: csvEnv(
+            "ENABLED_PUBLISH_PLATFORMS",
+            [...SUPPORTED_PUBLISH_PLATFORMS]
+        ).filter((platform) =>
+            SUPPORTED_PUBLISH_PLATFORMS.has(platform)
+        ),
         emailReportEnabled: booleanEnv(
             "SEND_PUBLISH_EMAIL_REPORT",
             true

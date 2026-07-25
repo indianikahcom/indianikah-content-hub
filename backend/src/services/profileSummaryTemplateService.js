@@ -2,7 +2,7 @@
   const rows = (items || [])
       .filter((x) => x.label !== "Not specified")
       .slice(0, limit)
-      .map((x) => `â€¢ ${x.label} â€” ${x.count}`);
+      .map((x) => `- ${x.label}: ${x.count}`);
 
   return rows.length ? `${title}\n${rows.join("\n")}` : null;
 }
@@ -18,7 +18,7 @@ function buildSummaryPost(stats, window = {}) {
           `No new public matrimonial profiles were added during the last ${hours} hours.\n\n` +
           `Explore existing profiles:\n` +
           `https://www.indianikah.com\n\n` +
-          `IndiaNikah â€” 100% free forever.`,
+          `IndiaNikah - 100% free forever.`,
     };
   }
 
@@ -31,29 +31,29 @@ function buildSummaryPost(stats, window = {}) {
   return {
     title,
     content: [
-      `âœ¨ ${title}`,
-      section("ðŸ‘¥ Gender", h.genders, 3),
-      section("ðŸŽ‚ Age Groups", h.ageGroups, 6),
-      section("ðŸ“ Top Cities", h.cities),
-      section("ðŸ—ºï¸ Top States", h.states),
-      section("ðŸ’¼ Occupations", h.occupations),
-      section("ðŸŽ“ Education", h.education),
-      section("ðŸ’ Marital Status", h.maritalStatuses),
+      title,
+      section("Gender", h.genders, 3),
+      section("Age Groups", h.ageGroups, 6),
+      section("Top Cities", h.cities),
+      section("Top States", h.states),
+      section("Occupations", h.occupations),
+      section("Education", h.education),
+      section("Marital Status", h.maritalStatuses),
       stats.verifiedProfiles
-          ? `âœ… Verified profiles: ${stats.verifiedProfiles}`
+          ? `Verified profiles: ${stats.verifiedProfiles}`
           : null,
       "Browse the latest profiles:\nhttps://www.indianikah.com",
       "Anonymous statistics only. No individual profile details are shared.",
-      "IndiaNikah â€” 100% free forever.",
+      "IndiaNikah - 100% free forever.",
     ]
         .filter(Boolean)
         .join("\n\n"),
   };
 }
 
-function platformVariants(post) {
-  const x = `${post.title}\n\nhttps://www.indianikah.com\n\n#IndiaNikah`;
+const { postText: composeXText } = require("./publishers/xPublisher");
 
+function platformVariants(post) {
   return [
     {
       platform: "FACEBOOK",
@@ -66,11 +66,6 @@ function platformVariants(post) {
       content: `${post.content}\n\n#IndiaNikah #MuslimMatrimony #FreeMatrimony`,
     },
     {
-      platform: "X",
-      title: null,
-      content: x.length <= 280 ? x : `${x.slice(0, 277)}...`,
-    },
-    {
       platform: "LINKEDIN",
       title: post.title,
       content: `${post.content}\n\n#IndiaNikah #Matrimony`,
@@ -81,9 +76,9 @@ function platformVariants(post) {
       content: post.content,
     },
     {
-      platform: "WHATSAPP",
+      platform: "X",
       title: null,
-      content: post.content,
+      content: composeXText(`${post.title}\n\n${post.content}`),
     },
   ];
 }

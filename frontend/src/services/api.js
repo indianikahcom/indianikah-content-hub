@@ -36,6 +36,22 @@ function buildQuery(params = {}) {
 }
 
 export const api = {
+  getKnowledge(params = {}) { return request(`/knowledge${buildQuery(params)}`); },
+  createKnowledge(data) { return request("/knowledge", { method: "POST", body: JSON.stringify(data) }); },
+  updateKnowledgeStatus(id, status) { return request(`/knowledge/${id}/status`, { method: "PATCH", body: JSON.stringify({ status }) }); },
+  getKnowledgeStats() { return request("/knowledge-library/stats"); },
+  getKnowledgePacks() { return request("/knowledge-library/packs"); },
+  createKnowledgePack(data) { return request("/knowledge-library/packs", { method: "POST", body: JSON.stringify(data) }); },
+  addKnowledgePackItem(packId, data) { return request(`/knowledge-library/packs/${packId}/items`, { method: "POST", body: JSON.stringify(data) }); },
+  removeKnowledgePackItem(packId, knowledgeItemId) { return request(`/knowledge-library/packs/${packId}/items/${knowledgeItemId}`, { method: "DELETE" }); },
+  buildKnowledgeContext(data) { return request("/knowledge-library/context", { method: "POST", body: JSON.stringify(data) }); },
+  generateKnowledgePost(type) {
+    return request("/knowledge-library/generate-post", {
+      method: "POST",
+      body: JSON.stringify({ type }),
+    });
+  },
+
   getDashboardSummary() {
     return request("/dashboard/summary");
   },
@@ -87,6 +103,18 @@ export const api = {
     return request("/automation/random-draft", {
       method: "POST",
       body: JSON.stringify(data),
+    });
+  },
+  generateProfileSummary(data = {}) {
+    return request("/profile-summaries/daily/generate", {
+      method: "POST",
+      body: JSON.stringify({
+        hours: 24,
+        topLimit: 5,
+        fetchLimit: 5000,
+        composePlatforms: true,
+        ...data,
+      }),
     });
   },
   testProductionConnection() {

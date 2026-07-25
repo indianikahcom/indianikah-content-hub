@@ -1,4 +1,4 @@
-const { z } = require("zod");
+﻿const { z } = require("zod");
 
 const randomDraftSchema = z.object({
     body: z.object({
@@ -7,7 +7,8 @@ const randomDraftSchema = z.object({
             .trim()
             .transform((value) => value.toUpperCase())
             .refine(
-                (value) => ["BOOK", "GUIDELINE", "BLOG"].includes(value),
+                (value) =>
+                    ["BOOK", "GUIDELINE", "BLOG"].includes(value),
                 "Type must be BOOK, GUIDELINE, or BLOG"
             ),
         platform: z
@@ -21,3 +22,4 @@ const randomDraftSchema = z.object({
 module.exports = {
     randomDraftSchema,
 };
+

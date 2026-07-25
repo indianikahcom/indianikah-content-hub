@@ -1,0 +1,18 @@
+const express = require("express");
+const controller = require("../controllers/knowledgeLibraryController");
+const validate = require("../middleware/validate");
+const schemas = require("../validators/knowledgeLibraryValidator");
+const router = express.Router();
+router.get("/stats", controller.stats);
+router.post("/search", validate(schemas.query), controller.search);
+router.post("/context", validate(schemas.query), controller.context);
+router.post("/generate-post", validate(schemas.generatePost), controller.generatePost);
+router.post("/bulk", validate(schemas.bulk), controller.bulkCreate);
+router.get("/packs", controller.listPacks);
+router.post("/packs", validate(schemas.createPack), controller.createPack);
+router.get("/packs/:id", validate(schemas.id), controller.getPack);
+router.put("/packs/:id", validate(schemas.updatePack), controller.updatePack);
+router.delete("/packs/:id", validate(schemas.id), controller.deletePack);
+router.post("/packs/:id/items", validate(schemas.packItem), controller.addPackItem);
+router.delete("/packs/:id/items/:knowledgeItemId", validate(schemas.removePackItem), controller.removePackItem);
+module.exports = router;

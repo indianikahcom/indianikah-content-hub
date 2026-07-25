@@ -1,9 +1,23 @@
 const AppError = require("../errors/AppError");
 const { publishInstagram, testInstagramConnection } = require("./publishers/instagramPublisher");
+const {
+    generateInstagramTextImage,
+} = require("./instagramTextImageService");
+const {
+    uploadInstagramImage,
+} = require("./r2MediaService");
+const xPublisher = require("./publishers/xPublisher");
 
 const DEFAULT_FACEBOOK_GRAPH_VERSION = "v25.0";
 const DEFAULT_LINKEDIN_VERSION = "202606";
 const REQUEST_TIMEOUT_MS = 30000;
+const SUPPORTED_PLATFORMS = new Set([
+    "TELEGRAM",
+    "FACEBOOK",
+    "LINKEDIN",
+    "INSTAGRAM",
+    "X",
+]);
 
 function enabledPlatforms() {
     return [
@@ -11,7 +25,9 @@ function enabledPlatforms() {
             String(process.env.PUBLISH_PLATFORMS || "TELEGRAM")
                 .split(",")
                 .map((value) => value.trim().toUpperCase())
-                .filter(Boolean)
+                .filter((value) =>
+                    SUPPORTED_PLATFORMS.has(value)
+                )
         ),
     ];
 }
@@ -361,12 +377,18 @@ async function publishFacebook(post) {
         );
     }
 
+    const { buildFacebookPostUrl } = require("./facebookPostUrl");
+
     return {
         destination: config.pageId,
         externalMessageId: String(payload.id),
         responseData: {
             pageId: config.pageId,
             facebookPostId: payload.id,
+            facebookPostUrl: buildFacebookPostUrl(
+                payload.id,
+                config.pageId
+            ),
             graphVersion: config.version,
         },
     };
@@ -507,14 +529,67 @@ async function publishToPlatform(platform, post) {
         case "LINKEDIN":
             return publishLinkedin(post);
         case "INSTAGRAM":
-            return publishInstagram(post);
+            {
+                const content = contentFor(post, "INSTAGRAM");
+                if (!content) {
+                    throw new AppError("Instagram content is empty", 400);
+                }
+                const caption =
+                    content.length <= 2200
+                        ? content
+                        : `${content.slice(0, 2197).trim()}...`;
+                const image = await uploadInstagramImage(
+                    await generateInstagramTextImage(post)
+                );
+                const result = await publishInstagram({
+                    content: caption,
+                    imageUrl: image.publicUrl,
+                });
+
+                return {
+                    destination:
+                        process.env.INSTAGRAM_USER_ID ||
+                        process.env.INSTAGRAM_BUSINESS_ACCOUNT_ID,
+                    externalMessageId:
+                        result.externalId || null,
+                    responseData: {
+                        instagramMediaId:
+                            result.externalId || null,
+                        instagramPostUrl:
+                            result.liveUrl || null,
+                        generatedImageUrl:
+                            image.publicUrl,
+                        generatedImageFile:
+                            image.fileName,
+                        imageGenerated:
+                            image.generated,
+                        imageStorage:
+                            image.storage,
+                        imageObjectKey:
+                            image.objectKey,
+                        providerResponse:
+                            result.raw || null,
+                    },
+                };
+            }
         case "X":
-        case "YOUTUBE":
-        case "WHATSAPP":
-            throw new AppError(
-                `${platform} publisher is not configured yet`,
-                501
-            );
+            {
+                const result = await xPublisher.publish({
+                    content: contentFor(post, "X"),
+                });
+                return {
+                    destination:
+                        process.env.X_USERNAME || null,
+                    externalMessageId:
+                        result.externalId || null,
+                    responseData: {
+                        xPostId: result.externalId || null,
+                        xPostUrl: result.liveUrl || null,
+                        providerResponse:
+                            result.raw || null,
+                    },
+                };
+            }
         default:
             throw new AppError(
                 `Unsupported platform: ${platform}`,
@@ -529,4 +604,5 @@ module.exports = {
     testFacebookConnection,
     testLinkedinConnection,
     testInstagramConnection,
+    testXConnection: xPublisher.testConnection,
 };

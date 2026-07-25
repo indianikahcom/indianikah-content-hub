@@ -3,6 +3,12 @@ const AppError = require("../errors/AppError");
 const repository = require("../repositories/publishingRepository");
 const { getPublisher } = require("./publisherRegistry");
 const {
+    generateInstagramTextImage,
+} = require("./instagramTextImageService");
+const {
+    uploadInstagramImage,
+} = require("./r2MediaService");
+const {
     getAutomationConfig,
 } = require("../config/automationConfig");
 const {
@@ -40,11 +46,27 @@ async function publishVariant(variant, options = {}) {
     });
 
     try {
+        let imageUrl = options.imageUrl;
+        let generatedImage = null;
+
+        if (platform === "INSTAGRAM" && !imageUrl) {
+            generatedImage = await uploadInstagramImage(
+                await generateInstagramTextImage({
+                    id: variant.postId,
+                    title: variant.title || "IndiaNikah",
+                    content: variant.content,
+                    updatedAt: variant.updatedAt,
+                    variants: [variant],
+                })
+            );
+            imageUrl = generatedImage.publicUrl;
+        }
+
         const result = await publisher.publish({
             platform,
             title: variant.title,
             content: variant.content,
-            imageUrl: options.imageUrl,
+            imageUrl,
         });
 
         const publishedAt = new Date();
@@ -65,6 +87,7 @@ async function publishVariant(variant, options = {}) {
             publishedAt,
             metadata: JSON.stringify({
                 liveUrl: result.liveUrl || null,
+                imageUrl: generatedImage?.publicUrl || imageUrl || null,
                 durationMs: publishedAt - startedAt,
             }),
         });

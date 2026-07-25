@@ -1,4 +1,7 @@
 const { requestJson } = require("./httpClient");
+const {
+    buildFacebookPostUrl,
+} = require("../facebookPostUrl");
 
 function ensureConfig() {
     if (!process.env.FACEBOOK_PAGE_ID) {
@@ -28,9 +31,10 @@ async function publish({ content }) {
 
     return {
         externalId,
-        liveUrl: externalId
-            ? `https://www.facebook.com/${externalId}`
-            : null,
+        liveUrl: buildFacebookPostUrl(
+            externalId,
+            process.env.FACEBOOK_PAGE_ID
+        ),
         raw: data,
     };
 }

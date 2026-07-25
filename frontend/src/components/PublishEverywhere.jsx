@@ -54,15 +54,17 @@ export default function PublishEverywhere({ post, showToast, onPublished }) {
           <strong><Globe2 size={17} /> Publish everywhere</strong>
           <small>Publishes to every enabled platform.</small>
         </div>
-        <button
-          type="button"
-          className="primary-button"
-          disabled={busy || post?.status !== "APPROVED"}
-          onClick={publish}
-        >
-          <Send size={16} />
-          {busy ? "Publishing..." : "Publish everywhere"}
-        </button>
+        <div className="publish-actions">
+          <button
+            type="button"
+            className="primary-button"
+            disabled={busy || post?.status !== "APPROVED"}
+            onClick={publish}
+          >
+            <Send size={16} />
+            {busy ? "Publishing..." : "Publish everywhere"}
+          </button>
+        </div>
       </div>
 
       {latest && (

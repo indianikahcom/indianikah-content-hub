@@ -225,6 +225,8 @@ model KnowledgeItem {
   tags        Json?
   status      KnowledgeStatus @default(DRAFT)
   sourceId    Int?
+  packItems   KnowledgePackItem[]
+  contextLogs KnowledgeContextLog[]
   createdAt   DateTime        @default(now())
   updatedAt   DateTime        @updatedAt
 
@@ -235,4 +237,56 @@ model KnowledgeItem {
   @@index([category])
   @@index([subcategory])
   @@index([createdAt])
+}
+
+
+model KnowledgePack {
+  id          Int                 @id @default(autoincrement())
+  key         String              @unique
+  name        String
+  description String?
+  instructions String?
+  contentTypes Json?
+  languages   Json?
+  tags        Json?
+  maxItems    Int                 @default(8)
+  maxCharacters Int               @default(12000)
+  isActive    Boolean             @default(true)
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @updatedAt
+  items       KnowledgePackItem[]
+  contextLogs KnowledgeContextLog[]
+
+  @@index([isActive])
+}
+
+model KnowledgePackItem {
+  id              Int           @id @default(autoincrement())
+  packId          Int
+  knowledgeItemId Int
+  priority        Int           @default(100)
+  notes           String?
+  createdAt       DateTime      @default(now())
+  pack            KnowledgePack @relation(fields: [packId], references: [id], onDelete: Cascade)
+  knowledgeItem   KnowledgeItem @relation(fields: [knowledgeItemId], references: [id], onDelete: Cascade)
+
+  @@unique([packId, knowledgeItemId])
+  @@index([packId, priority])
+  @@index([knowledgeItemId])
+}
+
+model KnowledgeContextLog {
+  id              Int            @id @default(autoincrement())
+  query           String
+  packId          Int?
+  knowledgeItemId Int?
+  score           Float?
+  generationType  String?
+  createdAt       DateTime       @default(now())
+  pack            KnowledgePack? @relation(fields: [packId], references: [id], onDelete: SetNull)
+  knowledgeItem   KnowledgeItem?  @relation(fields: [knowledgeItemId], references: [id], onDelete: SetNull)
+
+  @@index([createdAt])
+  @@index([packId])
+  @@index([knowledgeItemId])
 }

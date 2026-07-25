@@ -6,6 +6,7 @@ const prisma = require("../database/prisma");
 const promptRepository = require("../repositories/promptRepository");
 const aiClient = require("./aiClient");
 const AppError = require("../errors/AppError");
+const knowledgeContextService = require("./knowledgeContextService");
 
 function parseMetadata(value) {
     if (!value) return {};
@@ -19,6 +20,17 @@ function parseMetadata(value) {
     } catch {
         return {};
     }
+}
+
+
+function knowledgePackFor(type) {
+    const normalized = String(type || "").toUpperCase();
+    const map = {
+        QURAN: "QURAN_CONTENT", HADITH: "HADITH_CONTENT", DUA: "DUA_CONTENT",
+        BOOK: "BOOK_PROMOTION", PROFILE: "PROFILE_SUMMARY", GUIDELINE: "MARRIAGE_GUIDANCE",
+        BLOG: "MARRIAGE_GUIDANCE", NEWS: "CURRENT_AFFAIRS"
+    };
+    return map[normalized] || null;
 }
 
 function promptKeyFor(type) {
@@ -119,10 +131,41 @@ async function generateForSource(
     );
 
     try {
+        let knowledgeContext = null;
+
+        try {
+            const sourceType = String(source.type || "")
+            .trim()
+            .toUpperCase();
+
+        const knowledgeTypes =
+            ["QURAN", "HADITH", "DUA"].includes(sourceType)
+                ? [sourceType]
+                : undefined;
+
+            knowledgeContext =
+                await knowledgeContextService.buildContext({
+                    query: `${source.title || ""} ${source.rawContent || ""}`.slice(
+                        0,
+                        1000
+                    ),
+                    packKey:
+                        knowledgePackFor(source.type) || undefined,
+                    types: knowledgeTypes,
+                    languages: [metadata.language || "en"],
+                    maxItems: 6,
+                    maxCharacters: 9000,
+                    generationType: source.type
+                });
+        } catch (error) {
+            if (error.statusCode !== 404) {
+                throw error;
+            }
+        }
+
         const result = await aiClient.generateJson({
             systemPrompt: system.content,
-            userPrompt:
-                `${typePrompt.content}\n\nSOURCE DATA:\n${input}`
+            userPrompt: `${typePrompt.content}\n\n${knowledgeContext?.items?.length ? `${knowledgeContext.context}\n\n` : ""}SOURCE DATA:\n${input}`
         });
 
         let post;

@@ -1,5 +1,4 @@
 const prisma = require("../database/prisma");
-const AppError = require("../errors/AppError");
 const productionProfileRepository = require("../repositories/productionProfileRepository");
 const { buildProfileSummaryStats } = require("./profileSummaryStatsService");
 const { buildSummaryPost, platformVariants } = require("./profileSummaryTemplateService");
@@ -21,6 +20,10 @@ function parseMetadata(value) {
   if (!value) return {};
   if (typeof value === "object") return value;
   try { return JSON.parse(value); } catch { return {}; }
+}
+
+function containsMojibake(value) {
+  return /(?:ðŸ|â€¢|â€”|âœ|ï¸)/.test(String(value || ""));
 }
 
 async function collect(options = {}) {
@@ -68,14 +71,58 @@ async function createDailySummary(options = {}) {
 
   const existing = await prisma.contentSource.findUnique({
     where: { externalId },
-    include: { posts: { orderBy: { createdAt: "desc" }, take: 1 } }
+    include: {
+      posts: {
+        orderBy: { createdAt: "desc" },
+        take: 1,
+        include: {
+          variants: { orderBy: { platform: "asc" } }
+        }
+      }
+    }
   });
 
-  if (existing && !replaceExisting) {
-    throw new AppError(
-      `Daily profile summary already exists for ${indiaDateKey(collected.endedAt)}. Use replaceExisting=true.`,
-      409
-    );
+  const repairCorruptedExisting = Boolean(
+    existing?.posts?.[0] &&
+    (
+      containsMojibake(existing.posts[0].title) ||
+      containsMojibake(existing.posts[0].content) ||
+      existing.posts[0].variants?.some(
+        (variant) =>
+          containsMojibake(variant.title) ||
+          containsMojibake(variant.content)
+      )
+    )
+  );
+  const shouldReplaceExisting =
+    replaceExisting || repairCorruptedExisting;
+
+  if (existing && !shouldReplaceExisting) {
+    const post = existing.posts?.[0] || null;
+
+    if (post) {
+      return {
+        dryRun: false,
+        generated: false,
+        reusedExistingPost: true,
+        externalId,
+        hours: collected.hours,
+        statistics: collected.statistics,
+        variantCount: post.variants?.length || 0,
+        post: {
+          ...post,
+          source: {
+            ...existing,
+            metadata: parseMetadata(existing.metadata),
+            posts: undefined
+          }
+        },
+        approvalReady: {
+          mode: process.env.CONTENT_AUTOMATION_MODE || "MANUAL_APPROVAL",
+          currentStatus: post.status
+        }
+      };
+    }
   }
 
   const metadata = {
@@ -156,6 +203,9 @@ async function createDailySummary(options = {}) {
 
   return {
     dryRun: false,
+    generated: true,
+    reusedExistingPost: false,
+    repairedCorruptedExisting: repairCorruptedExisting,
     externalId,
     hours: collected.hours,
     statistics: collected.statistics,
