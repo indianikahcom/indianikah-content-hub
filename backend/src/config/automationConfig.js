@@ -56,6 +56,10 @@ function getAutomationConfig() {
             "PROFILE_SUMMARY_SCHEDULER_ENABLED",
             false
         ),
+        weeklyContentSchedulerEnabled: booleanEnv(
+            "WEEKLY_CONTENT_SCHEDULER_ENABLED",
+            false
+        ),
         profileSummaryHourIst: integerEnv(
             "PROFILE_SUMMARY_HOUR_IST",
             9,
@@ -65,6 +69,18 @@ function getAutomationConfig() {
         profileSummaryMinuteIst: integerEnv(
             "PROFILE_SUMMARY_MINUTE_IST",
             0,
+            0,
+            59
+        ),
+        weeklyContentHourIst: integerEnv(
+            "WEEKLY_CONTENT_HOUR_IST",
+            20,
+            0,
+            23
+        ),
+        weeklyContentMinuteIst: integerEnv(
+            "WEEKLY_CONTENT_MINUTE_IST",
+            30,
             0,
             59
         ),

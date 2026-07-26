@@ -38,8 +38,8 @@ const STUDIO_TYPES = [
   },
   {
     id: "PROFILE",
-    title: "Profile summaries",
-    description: "Generate privacy-first summaries from imported profile statistics.",
+    title: "24-hour profile summary",
+    description: "One privacy-safe summary per India calendar day; reopening it never creates a duplicate.",
     icon: Users,
     automation: "PROFILE"
   },
@@ -381,7 +381,7 @@ export default function App() {
               return <article className="studio-card" key={item.id}>
                 <div className="studio-icon"><Icon size={24}/></div>
                 <div className="studio-card-copy"><h3>{item.title}</h3><p>{item.description}</p></div>
-                <div className="studio-card-footer"><span>{item.pack ? `Pack: ${item.pack}` : item.automation ? "Automatic source selection" : "Your own brief"}</span><button onClick={() => startStudio(item)} disabled={studioBusy === item.id}>{studioBusy === item.id ? "Preparing..." : "Create"}</button></div>
+                <div className="studio-card-footer"><span>{item.pack ? `Pack: ${item.pack}` : item.id === "PROFILE" ? "Daily · Asia/Kolkata" : item.automation ? "Automatic source selection" : "Your own brief"}</span><button onClick={() => startStudio(item)} disabled={studioBusy === item.id}>{studioBusy === item.id ? "Preparing..." : item.id === "PROFILE" ? "Create / open today" : "Create"}</button></div>
               </article>;
             })}
           </div>

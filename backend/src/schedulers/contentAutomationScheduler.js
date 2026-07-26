@@ -6,9 +6,11 @@ const {
 const publishingService = require("../services/publishingService");
 const profileDailySummaryService = require("../services/profileDailySummaryService");
 const automationService = require("../services/automationService");
+const weeklyContentService = require("../services/weeklyContentService");
 
 let queueTask;
 let summaryTask;
+let weeklyContentTask;
 
 async function generateProfileSummaryAndMaybePublish() {
     const config = getAutomationConfig();
@@ -28,6 +30,9 @@ async function generateProfileSummaryAndMaybePublish() {
 
         if (
             postId &&
+            ["DRAFT", "PENDING_APPROVAL", "APPROVED"].includes(
+                generated?.post?.status
+            ) &&
             config.autoApproveEnabled &&
             config.autoPublishEnabled
         ) {
@@ -83,6 +88,7 @@ function startContentAutomationScheduler() {
             generateProfileSummaryAndMaybePublish,
             {
                 timezone: "Asia/Kolkata",
+                noOverlap: true,
             }
         );
 
@@ -96,11 +102,47 @@ function startContentAutomationScheduler() {
     } else {
         logger.info("Profile summary scheduler is disabled");
     }
+
+    if (config.weeklyContentSchedulerEnabled) {
+        const expression = `${config.weeklyContentMinuteIst} ${config.weeklyContentHourIst} * * *`;
+
+        weeklyContentTask = cron.schedule(
+            expression,
+            async () => {
+                try {
+                    const result =
+                        await weeklyContentService.generateAndPublishForToday();
+                    logger.info(
+                        `Scheduled ${result.type} post ${result.postId} processed`
+                    );
+                } catch (error) {
+                    logger.error(
+                        `Weekly content scheduler failed: ${error.stack || error.message}`
+                    );
+                }
+            },
+            {
+                timezone: "Asia/Kolkata",
+                noOverlap: true,
+            }
+        );
+
+        logger.info(
+            `Weekly content scheduler enabled at ${String(
+                config.weeklyContentHourIst
+            ).padStart(2, "0")}:${String(
+                config.weeklyContentMinuteIst
+            ).padStart(2, "0")} IST`
+        );
+    } else {
+        logger.info("Weekly content scheduler is disabled");
+    }
 }
 
 function stopContentAutomationScheduler() {
     queueTask?.stop();
     summaryTask?.stop();
+    weeklyContentTask?.stop();
 }
 
 module.exports = {

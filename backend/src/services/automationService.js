@@ -41,6 +41,17 @@ async function autoApprovePost(postId) {
 
     if (!post) throw new AppError("Post not found", 404);
 
+    const publishedToday =
+        await publishingService.publishedPostCountTodayInIndia();
+
+    if (publishedToday >= config.maxAutoPostsPerDay) {
+        return {
+            skipped: true,
+            reason: "The daily publishing limit has already been reached in India",
+            postId: post.id,
+        };
+    }
+
     if (
         !["DRAFT", "PENDING_APPROVAL", "APPROVED"].includes(
             post.status

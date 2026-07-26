@@ -34,6 +34,24 @@ function overallStatus(results) {
     return "PARTIAL_SUCCESS";
 }
 
+function currentIndiaDayRange(date = new Date()) {
+    const indiaDate = new Intl.DateTimeFormat("en-CA", {
+        timeZone: "Asia/Kolkata",
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+    }).format(date);
+    const startedAt = new Date(`${indiaDate}T00:00:00+05:30`);
+    const endedAt = new Date(startedAt.getTime() + 24 * 60 * 60 * 1000);
+
+    return { startedAt, endedAt };
+}
+
+async function publishedPostCountTodayInIndia() {
+    const { startedAt, endedAt } = currentIndiaDayRange();
+    return repository.countPublishedPostsBetween(startedAt, endedAt);
+}
+
 async function publishVariant(variant, options = {}) {
     const platform = String(variant.platform).toUpperCase();
     const publisher = getPublisher(platform);
@@ -278,8 +296,21 @@ async function processApprovedQueue(options = {}) {
         };
     }
 
+    const publishedToday = await publishedPostCountTodayInIndia();
+
+    if (publishedToday >= config.maxAutoPostsPerDay) {
+        return {
+            skipped: true,
+            reason: "The daily publishing limit has already been reached in India",
+            mode: config.mode,
+        };
+    }
+
     const posts = await repository.listReadyPosts(
-        options.limit || config.maxAutoPostsPerDay
+        Math.min(
+            options.limit || config.maxAutoPostsPerDay,
+            config.maxAutoPostsPerDay - publishedToday
+        )
     );
     const results = [];
 
@@ -310,5 +341,6 @@ module.exports = {
     publishPost,
     retryFailed,
     processApprovedQueue,
+    publishedPostCountTodayInIndia,
 };
 

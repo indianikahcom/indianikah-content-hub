@@ -31,6 +31,22 @@ async function listReadyPosts(limit = 10) {
     });
 }
 
+async function countPublishedPostsBetween(startedAt, endedAt) {
+    const publications = await prisma.publication.findMany({
+        where: {
+            status: "PUBLISHED",
+            publishedAt: {
+                gte: startedAt,
+                lt: endedAt,
+            },
+        },
+        select: { postId: true },
+        distinct: ["postId"],
+    });
+
+    return publications.length;
+}
+
 async function updateVariant(variantId, data) {
     return prisma.postVariant.update({
         where: { id: Number(variantId) },
@@ -63,6 +79,7 @@ async function createPublicationSafely(data) {
 module.exports = {
     findPostForPublishing,
     listReadyPosts,
+    countPublishedPostsBetween,
     updateVariant,
     updatePost,
     createPublicationSafely,
