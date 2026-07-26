@@ -1,0 +1,562 @@
+IndiaNikah AI Content Hub - Safe VPS Deployment Steps
+=====================================================
+
+This guide deploys the application alongside existing websites without
+editing or removing their configurations.
+
+Automated option:
+
+  A ready-to-run interactive script is included as deploy-safe-vps.sh.
+  Review it first, copy it to the VPS, and run:
+
+    chmod 700 deploy-safe-vps.sh
+    EXISTING_SITE_URLS="https://www.indianikah.com" ./deploy-safe-vps.sh
+
+  Add every important existing website URL to EXISTING_SITE_URLS, separated
+  by spaces. The script checks those sites throughout deployment and aborts
+  if one becomes unavailable. Successful, redirect, and intentional client
+  responses (including an API's normal 401, 403, or 404 root response) count
+  as reachable; connection failures and 5xx responses stop deployment.
+
+Example values used below:
+
+  Domain:       ai.indianikah.com
+  VPS IP:       31.97.60.150
+  Backend port: 3107
+  Install path: /srv/indianikah-content-hub
+  Service user: contenthub
+  Git branch:   feature/backend-bootstrap
+
+The domain and VPS IP in this guide are configured for this deployment.
+
+Deployment check recorded:
+
+  Port 3107 checked with: ss -lnt | grep ':3107'
+  Result: no output; port 3107 is currently available.
+
+
+1. Inspect and back up the current server
+-----------------------------------------
+
+Run these read-only checks:
+
+  nginx -T > /root/nginx-before-contenthub.txt
+  systemctl list-units --type=service --state=running
+  ss -lntp
+  node --version
+  npm --version
+  git --version
+  df -h
+
+Port 3107 was confirmed unused during the initial VPS check. You can verify it
+again immediately before starting the backend:
+
+  ss -lnt | grep ':3107'
+
+No output indicates that the port remains available. If it becomes occupied,
+select another unused port and use that port everywhere in this guide.
+
+Back up Nginx:
+
+  tar -czf /root/nginx-backup-$(date +%F-%H%M%S).tar.gz /etc/nginx
+
+Do not remove existing Nginx site files, change another site's service, or
+perform a general operating-system upgrade as part of this deployment.
+
+
+2. Configure and verify DNS
+---------------------------
+
+Create a new DNS A record:
+
+  ai.indianikah.com -> 31.97.60.150
+
+Verify it:
+
+  getent hosts ai.indianikah.com
+
+
+3. Create an isolated application user
+--------------------------------------
+
+  adduser --system \
+    --group \
+    --home /srv/indianikah-content-hub \
+    --shell /usr/sbin/nologin \
+    contenthub
+
+  install -d \
+    -o contenthub \
+    -g contenthub \
+    /srv/indianikah-content-hub
+
+
+4. Clone the application
+------------------------
+
+  sudo -u contenthub git clone \
+    --branch feature/backend-bootstrap \
+    https://github.com/indianikahcom/indianikah-content-hub.git \
+    /srv/indianikah-content-hub/app
+
+For a private repository, use a read-only GitHub deploy key.
+
+
+5. Install application dependencies
+-----------------------------------
+
+Run npm only inside this application's directories:
+
+  cd /srv/indianikah-content-hub/app/backend
+  sudo -u contenthub npm ci
+
+  cd /srv/indianikah-content-hub/app/frontend
+  sudo -u contenthub npm ci
+
+The automated script installs a checksum-verified Node.js 22 runtime inside
+/srv/indianikah-content-hub/runtime. It does not replace root's NVM runtime or
+the system Node version used by other sites.
+
+The script forces npm downloads through https://registry.npmjs.org, disables
+the nonessential audit request during deployment, and retries npm ci up to
+three times for transient network failures.
+
+
+6. Configure the backend
+------------------------
+
+  cd /srv/indianikah-content-hub/app/backend
+  sudo -u contenthub cp .env.example .env
+  nano .env
+
+Set the base application and database values:
+
+  PORT=3107
+  NODE_ENV=production
+  APP_NAME=IndiaNikah AI Content Hub
+  APP_VERSION=0.1.0
+
+  DATABASE_URL="file:./prisma/production.db"
+
+  PROD_DB_HOST=127.0.0.1
+  PROD_DB_PORT=3306
+  PROD_DB_NAME=django
+  PROD_DB_USER=contenthub_reader
+  PROD_DB_PASSWORD=REPLACE_WITH_READ_ONLY_PASSWORD
+  PROD_DB_POOL_SIZE=3
+
+Configure OpenAI:
+
+  AI_GENERATION_ENABLED=true
+  OPENAI_API_KEY=REPLACE_WITH_OPENAI_API_KEY
+  OPENAI_MODEL=gpt-5.4-mini
+
+Configure controlled automatic publishing:
+
+  CONTENT_AUTOMATION_MODE=FULL_AUTO
+  AUTO_APPROVE_ENABLED=true
+  AUTO_PUBLISH_ENABLED=true
+
+  PROFILE_SUMMARY_SCHEDULER_ENABLED=true
+  PROFILE_SUMMARY_HOUR_IST=10
+  PROFILE_SUMMARY_MINUTE_IST=0
+
+  WEEKLY_CONTENT_SCHEDULER_ENABLED=true
+  WEEKLY_CONTENT_HOUR_IST=20
+  WEEKLY_CONTENT_MINUTE_IST=30
+
+  MAX_AUTO_POSTS_PER_DAY=2
+
+Disable the older general queue publishers to avoid extra posts:
+
+  CONTENT_QUEUE_SCHEDULER_ENABLED=false
+  CONTENT_QUEUE_CRON_ENABLED=false
+  QUEUE_AUTO_PUBLISH=false
+
+Enable only fully configured destinations. Example for Telegram:
+
+  ENABLED_PUBLISH_PLATFORMS=TELEGRAM
+  PUBLISH_PLATFORMS=TELEGRAM
+  TELEGRAM_PUBLISH_ENABLED=true
+  TELEGRAM_BOT_TOKEN=REPLACE_WITH_TELEGRAM_BOT_TOKEN
+  TELEGRAM_CHANNEL_ID=@IndiaNikah
+
+Leave unconfigured platforms disabled:
+
+  FACEBOOK_PUBLISH_ENABLED=false
+  INSTAGRAM_PUBLISH_ENABLED=false
+  X_PUBLISH_ENABLED=false
+
+Generated Instagram media, if Instagram is enabled later:
+
+  INSTAGRAM_MEDIA_PUBLIC_BASE_URL=https://ai.indianikah.com/generated-media
+  INSTAGRAM_MEDIA_OUTPUT_DIR=public/generated-media
+
+Secure the environment file:
+
+  chown contenthub:contenthub /srv/indianikah-content-hub/app/backend/.env
+  chmod 600 /srv/indianikah-content-hub/app/backend/.env
+
+
+7. Prepare the database and media directory
+-------------------------------------------
+
+  cd /srv/indianikah-content-hub/app/backend
+
+  sudo -u contenthub mkdir -p public/generated-media
+  sudo -u contenthub npx prisma generate
+  sudo -u contenthub npx prisma migrate deploy
+
+Optional initial knowledge seeds:
+
+  sudo -u contenthub npm run knowledge:seed
+  sudo -u contenthub npm run knowledge:seed:quran-marriage
+  sudo -u contenthub npm run knowledge:seed:hadith-dua
+
+News and Video automation requires approved NEWS and VIDEO records in the
+Knowledge Library. Book and Blog automation requires imported content sources.
+Quran, Hadith, and Dua require approved, referenced knowledge.
+
+
+8. Build the frontend
+---------------------
+
+  cd /srv/indianikah-content-hub/app/frontend
+
+  sudo -u contenthub cp .env.example .env.production
+  sudo -u contenthub npm run build
+
+Verify the output:
+
+  test -f /srv/indianikah-content-hub/app/frontend/dist/index.html \
+    && echo "Frontend build ready"
+
+
+9. Create an isolated systemd service
+-------------------------------------
+
+Check the Node executable:
+
+  command -v node
+
+Create:
+
+  nano /etc/systemd/system/indianikah-content-hub.service
+
+Add:
+
+  [Unit]
+  Description=IndiaNikah Content Hub Backend
+  After=network.target
+
+  [Service]
+  Type=simple
+  User=contenthub
+  Group=contenthub
+  WorkingDirectory=/srv/indianikah-content-hub/app/backend
+  Environment=NODE_ENV=production
+  ExecStart=/usr/bin/node /srv/indianikah-content-hub/app/backend/src/server.js
+  Restart=on-failure
+  RestartSec=5
+  TimeoutStopSec=30
+
+  NoNewPrivileges=true
+  PrivateTmp=true
+  ProtectSystem=full
+  ProtectHome=true
+  ReadWritePaths=/srv/indianikah-content-hub/app/backend
+
+  [Install]
+  WantedBy=multi-user.target
+
+If "command -v node" returned a path other than /usr/bin/node, use that
+absolute path in ExecStart.
+
+Load and start only the new service:
+
+  systemctl daemon-reload
+  systemctl enable --now indianikah-content-hub
+
+Verify:
+
+  systemctl status indianikah-content-hub --no-pager
+  journalctl -u indianikah-content-hub -n 100 --no-pager
+  curl http://127.0.0.1:3107/api/health
+
+
+10. Protect the administration interface
+----------------------------------------
+
+The application does not currently have its own admin login. Create a unique
+Nginx Basic Authentication file:
+
+  htpasswd -c /etc/nginx/.htpasswd-contenthub contentadmin
+
+Use a strong password. If htpasswd is unavailable, install the
+apache2-utils package first.
+
+
+11. Add a separate Nginx virtual host
+-------------------------------------
+
+Create:
+
+  nano /etc/nginx/sites-available/indianikah-content-hub.conf
+
+Add this initial HTTP configuration:
+
+  server {
+      listen 80;
+      listen [::]:80;
+
+      server_name ai.indianikah.com;
+
+      root /srv/indianikah-content-hub/app/frontend/dist;
+      index index.html;
+
+      access_log /var/log/nginx/indianikah-content-hub.access.log;
+      error_log  /var/log/nginx/indianikah-content-hub.error.log;
+
+      client_max_body_size 20m;
+
+      location ^~ /.well-known/acme-challenge/ {
+          auth_basic off;
+          try_files $uri =404;
+      }
+
+      location /generated-media/ {
+          auth_basic off;
+
+          proxy_pass http://127.0.0.1:3107;
+          proxy_http_version 1.1;
+          proxy_set_header Host $host;
+          proxy_set_header X-Real-IP $remote_addr;
+          proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+          proxy_set_header X-Forwarded-Proto $scheme;
+      }
+
+      location /api/ {
+          auth_basic "IndiaNikah Content Hub";
+          auth_basic_user_file /etc/nginx/.htpasswd-contenthub;
+
+          proxy_pass http://127.0.0.1:3107;
+          proxy_http_version 1.1;
+          proxy_set_header Host $host;
+          proxy_set_header X-Real-IP $remote_addr;
+          proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+          proxy_set_header X-Forwarded-Proto $scheme;
+          proxy_read_timeout 300s;
+          proxy_send_timeout 300s;
+      }
+
+      location / {
+          auth_basic "IndiaNikah Content Hub";
+          auth_basic_user_file /etc/nginx/.htpasswd-contenthub;
+          try_files $uri $uri/ /index.html;
+      }
+  }
+
+Enable only this new virtual host:
+
+  ln -s \
+    /etc/nginx/sites-available/indianikah-content-hub.conf \
+    /etc/nginx/sites-enabled/indianikah-content-hub.conf
+
+Do not remove the default site or any existing site's symlink.
+
+Validate before reloading:
+
+  nginx -t
+
+Only after a successful validation:
+
+  systemctl reload nginx
+
+Use reload rather than restart so existing connections are preserved.
+
+
+12. Obtain HTTPS without rewriting other Nginx sites
+----------------------------------------------------
+
+Verify Certbot is installed:
+
+  certbot --version
+
+Obtain a certificate using webroot mode:
+
+  certbot certonly \
+    --webroot \
+    --webroot-path /srv/indianikah-content-hub/app/frontend/dist \
+    --domain ai.indianikah.com
+
+This mode obtains the certificate without asking Certbot to rewrite Nginx
+virtual-host files.
+
+
+13. Enable HTTPS manually
+-------------------------
+
+Replace the new Content Hub Nginx file with:
+
+  server {
+      listen 80;
+      listen [::]:80;
+
+      server_name ai.indianikah.com;
+
+      location ^~ /.well-known/acme-challenge/ {
+          root /srv/indianikah-content-hub/app/frontend/dist;
+          auth_basic off;
+          try_files $uri =404;
+      }
+
+      location / {
+          return 301 https://$host$request_uri;
+      }
+  }
+
+  server {
+      listen 443 ssl;
+      listen [::]:443 ssl;
+
+      server_name ai.indianikah.com;
+
+      ssl_certificate /etc/letsencrypt/live/ai.indianikah.com/fullchain.pem;
+      ssl_certificate_key /etc/letsencrypt/live/ai.indianikah.com/privkey.pem;
+      include /etc/letsencrypt/options-ssl-nginx.conf;
+      ssl_dhparam /etc/letsencrypt/ssl-dhparams.pem;
+
+      root /srv/indianikah-content-hub/app/frontend/dist;
+      index index.html;
+
+      access_log /var/log/nginx/indianikah-content-hub.access.log;
+      error_log  /var/log/nginx/indianikah-content-hub.error.log;
+
+      client_max_body_size 20m;
+
+      location /generated-media/ {
+          auth_basic off;
+
+          proxy_pass http://127.0.0.1:3107;
+          proxy_http_version 1.1;
+          proxy_set_header Host $host;
+          proxy_set_header X-Real-IP $remote_addr;
+          proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+          proxy_set_header X-Forwarded-Proto $scheme;
+      }
+
+      location /api/ {
+          auth_basic "IndiaNikah Content Hub";
+          auth_basic_user_file /etc/nginx/.htpasswd-contenthub;
+
+          proxy_pass http://127.0.0.1:3107;
+          proxy_http_version 1.1;
+          proxy_set_header Host $host;
+          proxy_set_header X-Real-IP $remote_addr;
+          proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+          proxy_set_header X-Forwarded-Proto $scheme;
+          proxy_read_timeout 300s;
+          proxy_send_timeout 300s;
+      }
+
+      location / {
+          auth_basic "IndiaNikah Content Hub";
+          auth_basic_user_file /etc/nginx/.htpasswd-contenthub;
+          try_files $uri $uri/ /index.html;
+      }
+  }
+
+Validate and reload:
+
+  nginx -t
+  systemctl reload nginx
+
+Test certificate renewal:
+
+  certbot renew --dry-run
+
+
+14. Publishing schedule
+-----------------------
+
+All times use Asia/Kolkata:
+
+  Every day, 10:00 AM: 24-hour profile summary
+
+  Monday,    8:30 PM: News
+  Tuesday,   8:30 PM: Blog
+  Wednesday, 8:30 PM: Book
+  Thursday,  8:30 PM: Video
+  Friday,    8:30 PM: Quran
+  Saturday,  8:30 PM: Hadith
+  Sunday,    8:30 PM: Dua
+
+The summary has a stable India-date key and is not regenerated or republished
+after a service restart on the same day. Automatic publishing stops after two
+distinct posts have been published during an India calendar day.
+
+
+15. Final verification
+----------------------
+
+  curl -u contentadmin https://ai.indianikah.com/api/health
+  systemctl is-active indianikah-content-hub
+  journalctl -u indianikah-content-hub -n 100 --no-pager
+  tail -n 50 /var/log/nginx/indianikah-content-hub.error.log
+  ss -lntp | grep ':3107'
+
+Expected scheduler messages include:
+
+  Profile summary scheduler enabled at 10:00 IST
+  Weekly content scheduler enabled at 20:30 IST
+  Content queue scheduler is disabled
+
+Open and verify every pre-existing site after this deployment.
+
+
+16. Safe application updates
+----------------------------
+
+Back up SQLite before an update:
+
+  install -d -m 700 /srv/indianikah-content-hub/backups
+
+  cp \
+    /srv/indianikah-content-hub/app/backend/prisma/production.db \
+    /srv/indianikah-content-hub/backups/production-$(date +%F-%H%M%S).db
+
+Update only this application:
+
+  cd /srv/indianikah-content-hub/app
+  sudo -u contenthub git pull --ff-only
+
+  cd backend
+  sudo -u contenthub npm ci
+  sudo -u contenthub npx prisma generate
+  sudo -u contenthub npx prisma migrate deploy
+
+  cd ../frontend
+  sudo -u contenthub npm ci
+  sudo -u contenthub npm run build
+
+  systemctl restart indianikah-content-hub
+
+Nginx does not normally need a reload for application-only updates. If its
+configuration was changed:
+
+  nginx -t
+  systemctl reload nginx
+
+
+17. Immediate rollback
+----------------------
+
+If the new Nginx site causes a problem:
+
+  rm /etc/nginx/sites-enabled/indianikah-content-hub.conf
+  nginx -t
+  systemctl reload nginx
+  systemctl disable --now indianikah-content-hub
+
+These commands remove only the Content Hub virtual host and service. Existing
+websites and their configurations remain in place.
