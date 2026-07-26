@@ -284,7 +284,9 @@ step "Install dependencies and build in isolated application directories"
 npm_ci_with_retries "${BACKEND_DIR}"
 (
     cd "${BACKEND_DIR}"
-    run_as_app "${NPX_BIN}" prisma generate
+    run_as_app env \
+        'DATABASE_URL=file:./prisma/production.db' \
+        "${NPX_BIN}" prisma generate
 )
 
 sudo -u "${APP_USER}" cp "${FRONTEND_DIR}/.env.example" "${FRONTEND_DIR}/.env.production"

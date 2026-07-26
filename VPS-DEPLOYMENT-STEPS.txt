@@ -121,6 +121,10 @@ The script forces npm downloads through https://registry.npmjs.org, disables
 the nonessential audit request during deployment, and retries npm ci up to
 three times for transient network failures.
 
+Prisma client generation uses a temporary local SQLite URL before the private
+production .env file is created. The real environment values are used for the
+later migration and service startup steps.
+
 
 6. Configure the backend
 ------------------------
