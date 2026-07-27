@@ -1,4 +1,8 @@
 const { requestJson } = require("./httpClient");
+const logger = require("../../logger/logger");
+
+const PERMALINK_ATTEMPTS = 3;
+const PERMALINK_RETRY_DELAY_MS = 1500;
 
 const RELEVANT_HASHTAGS = [
     "#IndiaNikah",
@@ -76,6 +80,42 @@ function ensureConfig() {
     return config;
 }
 
+function delay(milliseconds) {
+    return new Promise((resolve) => setTimeout(resolve, milliseconds));
+}
+
+async function fetchPermalink(config, externalId) {
+    let lastError = null;
+
+    for (let attempt = 1; attempt <= PERMALINK_ATTEMPTS; attempt += 1) {
+        try {
+            const detailsUrl = new URL(
+                `https://graph.facebook.com/${config.version}/${externalId}`
+            );
+            detailsUrl.searchParams.set("fields", "permalink");
+            detailsUrl.searchParams.set("access_token", config.token);
+            const details = await requestJson(detailsUrl);
+
+            if (details?.permalink) {
+                return details.permalink;
+            }
+
+            lastError = new Error("Meta returned no permalink");
+        } catch (error) {
+            lastError = error;
+        }
+
+        if (attempt < PERMALINK_ATTEMPTS) {
+            await delay(PERMALINK_RETRY_DELAY_MS);
+        }
+    }
+
+    logger.warn(
+        `Instagram post ${externalId} published, but permalink lookup failed after ${PERMALINK_ATTEMPTS} attempts: ${lastError?.message || "unknown error"}`
+    );
+    return null;
+}
+
 async function ensurePublicImage(imageUrl) {
     let response;
 
@@ -145,21 +185,9 @@ async function publish({ content, imageUrl }) {
     });
 
     const externalId = String(result?.id || "");
-    let permalink = null;
-
-    if (externalId) {
-        try {
-            const detailsUrl = new URL(
-                `https://graph.facebook.com/${config.version}/${externalId}`
-            );
-            detailsUrl.searchParams.set("fields", "permalink");
-            detailsUrl.searchParams.set("access_token", config.token);
-            const details = await requestJson(detailsUrl);
-            permalink = details?.permalink || null;
-        } catch {
-            // Publishing succeeded; a permalink lookup failure is non-fatal.
-        }
-    }
+    const permalink = externalId
+        ? await fetchPermalink(config, externalId)
+        : null;
 
     return {
         externalId,
