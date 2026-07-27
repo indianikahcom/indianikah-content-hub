@@ -1,6 +1,7 @@
 const prisma = require("../database/prisma");
 const aiClient = require("./aiClient");
 const randomDraftService = require("./randomDraftService");
+const contentImportService = require("./contentImportService");
 const knowledgePostGenerationService = require("./knowledgePostGenerationService");
 const platformComposerService = require("./platformComposerService");
 const automationService = require("./automationService");
@@ -14,6 +15,13 @@ const WEEKLY_TYPES = Object.freeze({
     4: "VIDEO",
     5: "QURAN",
     6: "HADITH",
+});
+
+const DATABASE_SOURCE_TYPES = Object.freeze({
+    NEWS: "BLOG",
+    BLOG: "BLOG",
+    BOOK: "BOOK",
+    VIDEO: "GUIDELINE",
 });
 
 function indiaWeekday(date = new Date()) {
@@ -97,16 +105,30 @@ async function createApprovedKnowledgeDraft(type) {
     return created;
 }
 
+async function refreshDatabaseSources(type) {
+    if (type === "NEWS" || type === "BLOG") {
+        await contentImportService.importBlogs();
+    } else if (type === "BOOK") {
+        await contentImportService.importBooks();
+    } else if (type === "VIDEO") {
+        await contentImportService.importGuidelines();
+    }
+}
+
 async function createDraft(type) {
     if (["QURAN", "HADITH", "DUA"].includes(type)) {
         return knowledgePostGenerationService.generateKnowledgePost(type);
     }
-    if (["BOOK", "BLOG"].includes(type)) {
+
+    const sourceType = DATABASE_SOURCE_TYPES[type];
+    if (sourceType) {
+        await refreshDatabaseSources(type);
         return randomDraftService.createRandomDraft({
-            type,
+            type: sourceType,
             platform: "TELEGRAM",
         });
     }
+
     return createApprovedKnowledgeDraft(type);
 }
 
@@ -125,6 +147,7 @@ async function generateAndPublishForToday(date = new Date()) {
 
 module.exports = {
     WEEKLY_TYPES,
+    DATABASE_SOURCE_TYPES,
     indiaWeekday,
     generateAndPublishForToday,
 };

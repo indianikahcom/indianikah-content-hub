@@ -112,9 +112,15 @@ function startContentAutomationScheduler() {
                 try {
                     const result =
                         await weeklyContentService.generateAndPublishForToday();
-                    logger.info(
-                        `Scheduled ${result.type} post ${result.postId} processed`
-                    );
+                    if (result.publishing?.skipped) {
+                        logger.warn(
+                            `Scheduled ${result.type} post ${result.postId} created but publishing skipped: ${result.publishing.reason}`
+                        );
+                    } else {
+                        logger.info(
+                            `Scheduled ${result.type} post ${result.postId} processed`
+                        );
+                    }
                 } catch (error) {
                     logger.error(
                         `Weekly content scheduler failed: ${error.stack || error.message}`

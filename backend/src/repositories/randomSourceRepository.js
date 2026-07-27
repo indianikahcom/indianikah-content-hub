@@ -6,6 +6,12 @@ const defaults = {
   BLOG: 180
 };
 
+function isPublishedStatus(status) {
+  return ["PUBLISHED", "SUCCESS"].includes(
+      String(status || "").toUpperCase()
+  );
+}
+
 function cooldown(type) {
   const value = Number.parseInt(
       process.env[`${type}_REPUBLISH_AFTER_DAYS`],
@@ -111,7 +117,7 @@ async function findRandomUnpublished({
             .filter(publication =>
                 publication.platform ===
                 normalizedPlatform &&
-                publication.status === "SUCCESS"
+                isPublishedStatus(publication.status)
             )
             .map(publication =>
                 publication.publishedAt
@@ -124,7 +130,7 @@ async function findRandomUnpublished({
                 .filter(publication =>
                     publication.platform ===
                     normalizedPlatform &&
-                    publication.status === "SUCCESS"
+                    isPublishedStatus(publication.status)
                 )
                 .map(publication =>
                     publication.publishedAt
@@ -196,5 +202,6 @@ async function findRandomUnpublished({
 }
 
 module.exports = {
-  findRandomUnpublished
+  findRandomUnpublished,
+  isPublishedStatus
 };
