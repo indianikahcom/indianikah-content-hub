@@ -3,6 +3,8 @@ const logger = require("../../logger/logger");
 
 const PERMALINK_ATTEMPTS = 3;
 const PERMALINK_RETRY_DELAY_MS = 1500;
+const CONTAINER_STATUS_ATTEMPTS = 15;
+const CONTAINER_STATUS_DELAY_MS = 2000;
 
 const RELEVANT_HASHTAGS = [
     "#IndiaNikah",
@@ -82,6 +84,49 @@ function ensureConfig() {
 
 function delay(milliseconds) {
     return new Promise((resolve) => setTimeout(resolve, milliseconds));
+}
+
+function mediaContainerState(details) {
+    return String(
+        details?.status_code || details?.status || ""
+    ).trim().toUpperCase();
+}
+
+async function waitForMediaContainer(config, containerId) {
+    let lastState = "";
+
+    for (
+        let attempt = 1;
+        attempt <= CONTAINER_STATUS_ATTEMPTS;
+        attempt += 1
+    ) {
+        const statusUrl = new URL(
+            `https://graph.facebook.com/${config.version}/${containerId}`
+        );
+        statusUrl.searchParams.set("fields", "status_code,status");
+        statusUrl.searchParams.set("access_token", config.token);
+
+        const details = await requestJson(statusUrl);
+        lastState = mediaContainerState(details);
+
+        if (lastState === "FINISHED") {
+            return details;
+        }
+
+        if (["ERROR", "EXPIRED"].includes(lastState)) {
+            throw new Error(
+                `Instagram media container ${containerId} entered ${lastState}: ${details?.status || "processing failed"}`
+            );
+        }
+
+        if (attempt < CONTAINER_STATUS_ATTEMPTS) {
+            await delay(CONTAINER_STATUS_DELAY_MS);
+        }
+    }
+
+    throw new Error(
+        `Instagram media container ${containerId} was not ready after ${CONTAINER_STATUS_ATTEMPTS} checks (last status: ${lastState || "unknown"})`
+    );
 }
 
 async function fetchPermalink(config, externalId) {
@@ -170,13 +215,25 @@ async function publish({ content, imageUrl }) {
     const container = await requestJson(containerUrl, {
         method: "POST",
     });
+    const containerId = String(container?.id || "").trim();
+
+    if (!containerId) {
+        throw new Error(
+            "Instagram did not return a media container ID"
+        );
+    }
+
+    const containerStatus = await waitForMediaContainer(
+        config,
+        containerId
+    );
 
     const publishUrl = new URL(
         `https://graph.facebook.com/${config.version}/${config.accountId}/media_publish`
     );
     publishUrl.searchParams.set(
         "creation_id",
-        String(container.id)
+        containerId
     );
     publishUrl.searchParams.set("access_token", config.token);
 
@@ -194,6 +251,7 @@ async function publish({ content, imageUrl }) {
         liveUrl: permalink,
         raw: {
             container,
+            containerStatus,
             publication: result,
             imageUrl: mediaUrl,
             permalink,
@@ -225,4 +283,5 @@ module.exports = {
     testConnection,
     testInstagramConnection: testConnection,
     captionWithHashtags,
+    mediaContainerState,
 };
