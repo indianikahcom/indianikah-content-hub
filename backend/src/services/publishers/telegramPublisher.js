@@ -9,6 +9,28 @@ function ensureConfig() {
     }
 }
 
+function telegramPostUrl({ username, chatId, messageId }) {
+    const normalizedMessageId = String(messageId || "").trim();
+    const normalizedUsername = String(username || "")
+        .trim()
+        .replace(/^@/, "");
+
+    if (!normalizedMessageId) {
+        return null;
+    }
+
+    if (normalizedUsername) {
+        return `https://t.me/${normalizedUsername}/${normalizedMessageId}`;
+    }
+
+    const normalizedChatId = String(chatId || "").trim();
+    if (/^-100\d+$/.test(normalizedChatId)) {
+        return `https://t.me/c/${normalizedChatId.slice(4)}/${normalizedMessageId}`;
+    }
+
+    return null;
+}
+
 async function publish({ content }) {
     ensureConfig();
 
@@ -25,18 +47,23 @@ async function publish({ content }) {
         }),
     });
 
-    const username = String(
-        process.env.TELEGRAM_CHANNEL_USERNAME || ""
-    ).replace(/^@/, "");
+    const messageId = data?.result?.message_id;
+    const username =
+        process.env.TELEGRAM_CHANNEL_USERNAME ||
+        data?.result?.chat?.username;
+    const chatId =
+        data?.result?.chat?.id ||
+        process.env.TELEGRAM_CHAT_ID;
 
     return {
-        externalId: String(data?.result?.message_id || ""),
-        liveUrl:
-            username && data?.result?.message_id
-                ? `https://t.me/${username}/${data.result.message_id}`
-                : null,
+        externalId: String(messageId || ""),
+        liveUrl: telegramPostUrl({
+            username,
+            chatId,
+            messageId,
+        }),
         raw: data,
     };
 }
 
-module.exports = { publish };
+module.exports = { publish, telegramPostUrl };
